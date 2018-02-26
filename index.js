@@ -1,5 +1,6 @@
-const PassageClient = require('./src/client');
-const PassageServer = require('./src/server');
+const WebSocket = require('ws');
+const PassageClient = require('./src/client')(WebSocket);
+const PassageServer = require('./src/server')(WebSocket);
 
 PassageClient.Server = PassageServer;
 

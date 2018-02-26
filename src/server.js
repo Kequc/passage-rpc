@@ -1,5 +1,4 @@
 const EventEmitter = require('events');
-const WebSocket = require('ws');
 
 const jsonrpc = '2.0';
 
@@ -14,10 +13,11 @@ function getAttr (message, name) {
 
 const getPromise = (events, ws) => message => {
     const method = getAttr(message, 'method');
-    if (method === undefined || message.jsonrpc !== jsonrpc) return Promise.resolve(new Error('Invalid'));
-    const event = events[method];
-    if (event === undefined) return Promise.resolve(new Error('Missing'));
-    return event(getAttr(message, 'params'), ws).catch(e => e);
+    if (method === undefined || message.jsonrpc !== jsonrpc)
+        return Promise.resolve(new Error('Invalid'));
+    if (events[method] === undefined)
+        return Promise.resolve(new Error('Missing'));
+    return events[method](getAttr(message, 'params'), ws).catch(e => e);
 };
 
 const buildResponse = ids => results => {
@@ -74,37 +74,39 @@ function notify (method, params) {
     this.send(JSON.stringify({ method, params, jsonrpc }));
 }
 
-class PassageServer extends EventEmitter {
-    constructor (options = {}) {
-        super();
+module.exports = (WebSocket) => {
+    class PassageServer extends EventEmitter {
+        constructor (options = {}) {
+            super();
 
-        const heartrate = options.heartrate || 30000;
-        delete options.heartrate;
-        const events = options.events || {};
-        delete options.events;
+            const heartrate = options.heartrate || 30000;
+            delete options.heartrate;
+            const events = options.events || {};
+            delete options.events;
 
-        this.connection = new WebSocket.Server(options);
-        this.connection.on('connection', ws => {
-            ws.isAlive = true;
-            ws.notify = notify;
-            ws.on('pong', onPong);
-            ws.on('message', onMessage(events));
-            ws.on('close', onClose);
-            ws.on('error', onError);
-            this.emit('rpc.connection', ws);
-        });
+            this.connection = new WebSocket.Server(options);
+            this.connection.on('connection', ws => {
+                ws.isAlive = true;
+                ws.notify = notify;
+                ws.on('pong', onPong);
+                ws.on('message', onMessage(events));
+                ws.on('close', onClose);
+                ws.on('error', onError);
+                this.emit('rpc.connection', ws);
+            });
 
-        this._interval = setInterval(() => {
-            for (const client of this.connection.clients) {
-                if (client.isAlive) {
-                    client.isAlive = false;
-                    client.ping('', false, true);
-                } else {
-                    client.terminate();
+            this._interval = setInterval(() => {
+                for (const client of this.connection.clients) {
+                    if (client.isAlive) {
+                        client.isAlive = false;
+                        client.ping('', false, true);
+                    } else {
+                        client.terminate();
+                    }
                 }
-            }
-        }, heartrate);
+            }, heartrate);
+        }
     }
-}
 
-module.exports = PassageServer;
+    return PassageServer;
+};

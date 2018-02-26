@@ -1,5 +1,6 @@
 const EventEmitter = require('events');
-const WebSocket = require('ws');
+
+const jsonrpc = '2.0';
 
 function onOpen () {
     this._tries = 0;
@@ -14,8 +15,8 @@ function onClose () {
     this.emit('rpc.close');
 }
 
-function onError (data) {
-    this.emit('rpc.error', data);
+function onError (event) {
+    this.emit('rpc.error', event);
 }
 
 function runCallback (id, error, result) {
@@ -48,12 +49,12 @@ function messageType (message) {
     return TYPE.INVALID;
 }
 
-function onMessage (data) {
-    this.emit('rpc.message', data);
+function onMessage (event) {
+    this.emit('rpc.message', event.data);
     
     let messages;
     try {
-        messages = JSON.parse(data);
+        messages = JSON.parse(event.data);
         if (!Array.isArray(messages)) messages = [messages];
     } catch (e) {
         return;
@@ -84,65 +85,97 @@ function runTimeout (id) {
 
 const numOrDef = (num, def) => (typeof num === 'number' ? num : def);
 
-class PassageClient extends EventEmitter {
-    constructor (uri, options = {}) {
-        super();
+function buildMessages (arr) {
+    const result = [];
 
-        this.uri = uri;
-        this.options = {
-            requestTimeout: numOrDef(options.requestTimeout, 6000),
-            reconnect: !!options.reconnect,
-            reconnectTimeout: numOrDef(options.reconnectTimeout, 2000),
-            reconnectTries: numOrDef(options.reconnectTries, 60)
+    for (const obj of arr) {
+        if (typeof obj !== 'object' || typeof obj.method !== 'string') {
+            if (typeof obj.callback === 'function') obj.callback(new Error('Invalid payload'));
+            continue;
+        }
+
+        const data = {
+            id: (typeof obj.callback === 'function' ? this._nextId++ : undefined),
+            method: obj.method,
+            params: obj.params,
+            jsonrpc
         };
 
-        this._nextId = 1;
-        this._tries = 0;
-        this._callbacks = {};
-        this._events = {};
-
-        this.connect();
+        result.push({ id: data.id, payload: JSON.stringify(data), callback: obj.callback });
     }
 
-    close () {
-        if (this.connection === undefined) return;
-        this.connection.killed = true;
-        this.connection.close();
-    }
-
-    connect () {
-        this.close();
-        this.connection = new WebSocket(this.uri);
-        this.connection.addEventListener('open', onOpen.bind(this));
-        this.connection.addEventListener('close', onClose.bind(this));
-        this.connection.addEventListener('error', onError.bind(this));
-        this.connection.addEventListener('message', onMessage.bind(this));
-    }
-
-    send (method, params, callback, timeout) {
-        if (this.connection === undefined) {
-            if (typeof callback === 'function') callback(new Error('No connection'));
-            return;
-        }
-
-        const id = (typeof callback === 'function' ? this._nextId++ : undefined);
-
-        let message;
-        try {
-            message = JSON.stringify({ id: id, method: method, params: params, jsonrpc: '2.0' });
-        } catch (e) {
-            if (typeof callback === 'function') callback(e);
-            return;
-        }
-
-        if (typeof callback === 'function') {
-            this._callbacks[id] = callback;
-            const ms = numOrDef(timeout, this.options.requestTimeout);
-            setTimeout(() => { runTimeout.call(this, id); }, ms);
-        }
-
-        this.connection.send(message);
-    }
+    return result;
 }
 
-module.exports = PassageClient;
+module.exports = (WebSocket) => {
+    class PassageClient extends EventEmitter {
+        constructor (uri, options = {}) {
+            super();
+
+            this.uri = uri;
+            this.options = {
+                requestTimeout: numOrDef(options.requestTimeout, 6000),
+                reconnect: !!options.reconnect,
+                reconnectTimeout: numOrDef(options.reconnectTimeout, 2000),
+                reconnectTries: numOrDef(options.reconnectTries, 60)
+            };
+
+            this._nextId = 1;
+            this._tries = 0;
+            this._callbacks = {};
+
+            this.connect();
+        }
+
+        close () {
+            if (this.connection === undefined) return;
+            this.connection.killed = true;
+            this.connection.close();
+        }
+
+        connect () {
+            this.close();
+            this.connection = new WebSocket(this.uri);
+            this.connection.on('open', onOpen.bind(this));
+            this.connection.on('close', onClose.bind(this));
+            this.connection.on('error', onError.bind(this));
+            this.connection.on('message', onMessage.bind(this));
+        }
+
+        sendAll (arr, timeout) {
+            if (this.connection === undefined) {
+                for (const obj of arr) {
+                    if (typeof obj.callback === 'function') obj.callback(new Error('No connection'));
+                }
+                return;
+            }
+
+            const messages = buildMessages.call(this, arr);
+
+            for (const message of messages) {
+                if (message.id !== undefined) {
+                    this._callbacks[message.id] = message.callback;
+                    const ms = numOrDef(timeout, this.options.requestTimeout);
+                    setTimeout(() => { runTimeout.call(this, message.id); }, ms);
+                }
+            }
+
+            if (messages.length > 1) {
+                this.connection.send('[' + messages.map(message => message.payload).join(',') + ']');
+            } else if (messages.length === 1) {
+                this.connection.send(messages[0].payload);
+            }
+        }
+
+        send (method, params, callback, timeout) {
+            if (typeof params === 'function') {
+                timeout = callback;
+                callback = params;
+                params = undefined;
+            }
+            this.sendAll([{ method, params, callback }], timeout);
+        }
+    }
+
+    return PassageClient;
+};
