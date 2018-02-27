@@ -1,4 +1,4 @@
-const jsonrpc = '2.0';
+const jsonrpc = require('./version');
 
 function onOpen () {
     this._tries = 0;
@@ -18,16 +18,20 @@ function onError (event) {
 }
 
 function runCallback (id, error, result) {
-    if (id !== undefined && this._callbacks[id] !== undefined) {
-        if (error) {
-            const err = new Error(error.message);
-            err.code = error.code;
-            err.data = error.data;
-            this._callbacks[id](err);
-        } else {
-            this._callbacks[id](undefined, result);
-        }
+    clearTimeout(this._timeouts[id]);
+    delete this._timeouts[id];
+
+    if (id === undefined || this._callbacks[id] === undefined) return;
+
+    if (error) {
+        const err = new Error(error.message);
+        err.code = error.code;
+        err.data = error.data;
+        this._callbacks[id](err);
+    } else {
+        this._callbacks[id](undefined, result);
     }
+
     delete this._callbacks[id];
 }
 
@@ -39,7 +43,7 @@ const TYPE = {
 
 function messageType (message) {
     if (typeof message !== 'object') return TYPE.INVALID;
-    if (message.jsonrpc !== '2.0') return TYPE.INVALID;
+    if (message.jsonrpc !== jsonrpc) return TYPE.INVALID;
     if (message.method !== undefined) return TYPE.NOTIFICATION;
     if (message.id === undefined) return TYPE.INVALID;
     if (message.error !== undefined) return TYPE.RESPONSE;
@@ -59,8 +63,7 @@ function onMessage (event) {
     }
     
     for (const message of messages) {
-        const type = messageType(message);
-        switch (type) {
+        switch (messageType(message)) {
         case TYPE.NOTIFICATION:
             this.emit(message.method, message.params);
             break;
@@ -72,6 +75,9 @@ function onMessage (event) {
 }
 
 function runTimeout (id) {
+    clearTimeout(this._timeouts[id]);
+    delete this._timeouts[id];
+
     if (this._callbacks[id] === undefined) return;
     
     const error = new Error('Timeout');
@@ -99,12 +105,14 @@ module.exports = (WebSocket, EventEmitter) => {
             this._nextId = 1;
             this._tries = 0;
             this._callbacks = {};
+            this._timeouts = {};
 
             this.connect();
         }
 
         close () {
             if (this.connection === undefined) return;
+
             this.connection.killed = true;
             this.connection.close();
         }
@@ -120,10 +128,12 @@ module.exports = (WebSocket, EventEmitter) => {
 
         expectResponse (callback, timeout) {
             if (typeof callback !== 'function') return undefined;
+
             const id = this._nextId++;
             this._callbacks[id] = callback;
             const ms = numOrDef(timeout, this.options.requestTimeout);
-            setTimeout(() => { runTimeout.call(this, id); }, ms);
+            this._timeouts[id] = setTimeout(() => { runTimeout.call(this, id); }, ms);
+
             return id;
         }
 

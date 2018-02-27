@@ -1,4 +1,4 @@
-const jsonrpc = '2.0';
+const jsonrpc = require('./version');
 
 function onPong () {
     this.isAlive = true;
