@@ -1,13 +1,11 @@
 const EventEmitter = require('events');
 const expect = require('expect.js');
-const { Server, WebSocket } = require('mock-socket');
-const Passage = require('../src/client')(WebSocket, EventEmitter);
+const WebSocket = require('ws');
+const Passage = require('../src/client')(EventEmitter, WebSocket);
 const jsonrpc = require('../src/version');
 
-// mock ws library
-WebSocket.prototype.on = WebSocket.prototype.addEventListener;
-
-const URI = 'ws://fake-server.io';
+const PORT = 9000;
+const URI = `ws://localhost:${PORT}`;
 const DEFAULT_OPTIONS = {
     requestTimeout: 6000,
     reconnect: false,
@@ -19,10 +17,10 @@ describe('client', () => {
     let server;
 
     beforeEach(() => {
-        server = new Server(URI);
+        server = new WebSocket.Server({ port: PORT });
     });
     afterEach(done => {
-        server.stop(done);
+        server.close(done);
     });
 
     describe('defaults', () => {
@@ -34,7 +32,10 @@ describe('client', () => {
 
         it('should create an instance', () => {
             expect(passage.uri).to.equal(URI);
-            expect(passage.options).to.eql(DEFAULT_OPTIONS);
+            expect(passage.requestTimeout).to.equal(DEFAULT_OPTIONS.requestTimeout);
+            expect(passage.reconnect).to.equal(DEFAULT_OPTIONS.reconnect);
+            expect(passage.reconnectTimeout).to.equal(DEFAULT_OPTIONS.reconnectTimeout);
+            expect(passage.reconnectTries).to.equal(DEFAULT_OPTIONS.reconnectTries);
             expect(passage.connection).to.be.a(WebSocket);
         });
         it('should have event emitter', () => {
@@ -58,7 +59,10 @@ describe('client', () => {
             };
             const passage = new Passage(URI, options);
             expect(passage.uri).to.equal(URI);
-            expect(passage.options).to.eql(options);
+            expect(passage.requestTimeout).to.equal(options.requestTimeout);
+            expect(passage.reconnect).to.equal(options.reconnect);
+            expect(passage.reconnectTimeout).to.equal(options.reconnectTimeout);
+            expect(passage.reconnectTries).to.equal(options.reconnectTries);
             expect(passage.connection).to.be.a(WebSocket);
             passage.close();
         });
@@ -73,7 +77,10 @@ describe('client', () => {
                 };
                 const passage = new Passage(URI, options);
                 expect(passage.uri).to.equal(URI);
-                expect(passage.options).to.eql(DEFAULT_OPTIONS);
+                expect(passage.requestTimeout).to.equal(DEFAULT_OPTIONS.requestTimeout);
+                expect(passage.reconnect).to.equal(DEFAULT_OPTIONS.reconnect);
+                expect(passage.reconnectTimeout).to.equal(DEFAULT_OPTIONS.reconnectTimeout);
+                expect(passage.reconnectTries).to.equal(DEFAULT_OPTIONS.reconnectTries);
             }
         });
         it('should reconnect', done => {
@@ -88,7 +95,7 @@ describe('client', () => {
                 }
             });
             passage.on('rpc.close', () => {
-                if (count === 2) server = new Server(URI);
+                if (count === 2) server = new WebSocket.Server({ port: PORT });
                 count++;
             });
         });
@@ -109,8 +116,11 @@ describe('client', () => {
             passage.on('rpc.close', done);
         });
         it('should trigger rpc.error on error', done => {
-            passage.on('rpc.error', () => { done(); });
-            server.simulate('error');
+            passage.on('rpc.error', (e) => {
+                expect(e).to.be.a(Error);
+                done();
+            });
+            server.close();
         });
         it('should trigger rpc.message on message', done => {
             const text = 'some text';
@@ -118,7 +128,7 @@ describe('client', () => {
                 expect(message).to.equal(text);
                 done();
             });
-            passage.on('rpc.open', () => { server.send(text); });
+            server.on('connection', (ws) => { ws.send(text); });
         });
     });
 
@@ -136,14 +146,16 @@ describe('client', () => {
                 expect(received).to.eql(params);
                 done();
             });
-            passage.on('rpc.open', () => {
-                server.send(JSON.stringify({ method, params, jsonrpc }));
+            server.on('connection', (ws) => {
+                ws.send(JSON.stringify({ method, params, jsonrpc }));
             });
         });
         it('should send a notification', done => {
-            server.on('message', data => {
-                expect(JSON.parse(data)).to.eql({ method, jsonrpc });
-                done();
+            server.on('connection', (ws) => {
+                ws.on('message', data => {
+                    expect(JSON.parse(data)).to.eql({ method, jsonrpc });
+                    done();
+                });
             });
             passage.on('rpc.open', () => {
                 passage.send(method);
@@ -151,9 +163,11 @@ describe('client', () => {
         });
         it('should send a notification with params', done => {
             const params = { some: 'data' };
-            server.on('message', data => {
-                expect(JSON.parse(data)).to.eql({ method, params, jsonrpc });
-                done();
+            server.on('connection', (ws) => {
+                ws.on('message', data => {
+                    expect(JSON.parse(data)).to.eql({ method, params, jsonrpc });
+                    done();
+                });
             });
             passage.on('rpc.open', () => {
                 passage.send(method, params);
@@ -171,9 +185,11 @@ describe('client', () => {
 
         it('should receive a response', done => {
             const expected = { some: 'data' };
-            server.on('message', data => {
-                expect(JSON.parse(data)).to.eql({ id: 1, method, jsonrpc });
-                server.send(JSON.stringify({ id: 1, result: expected, jsonrpc }));
+            server.on('connection', (ws) => {
+                ws.on('message', data => {
+                    expect(JSON.parse(data)).to.eql({ id: 1, method, jsonrpc });
+                    ws.send(JSON.stringify({ id: 1, result: expected, jsonrpc }));
+                });
             });
             passage.on('rpc.open', () => {
                 passage.send(method, (error, result) => {
@@ -185,10 +201,12 @@ describe('client', () => {
         });
         it('should increment id', done => {
             let id = 1;
-            server.on('message', data => {
-                expect(JSON.parse(data).id).to.equal(id);
-                server.send(JSON.stringify({ id, result: true, jsonrpc }));
-                id++;
+            server.on('connection', (ws) => {
+                ws.on('message', data => {
+                    expect(JSON.parse(data).id).to.equal(id);
+                    ws.send(JSON.stringify({ id, result: true, jsonrpc }));
+                    id++;
+                });
             });
             passage.on('rpc.open', () => {
                 passage.send(method, () => {
@@ -202,9 +220,11 @@ describe('client', () => {
         });
         it('should receive an error', done => {
             const error = { code: 500, message: 'an error!', data: { hmm: 'oops' } };
-            server.on('message', data => {
-                expect(JSON.parse(data)).to.eql({ id: 1, method, jsonrpc });
-                server.send(JSON.stringify({ id: 1, error, jsonrpc }));
+            server.on('connection', (ws) => {
+                ws.on('message', data => {
+                    expect(JSON.parse(data)).to.eql({ id: 1, method, jsonrpc });
+                    ws.send(JSON.stringify({ id: 1, error, jsonrpc }));
+                });
             });
             passage.on('rpc.open', () => {
                 passage.send(method, (error, result) => {
@@ -275,6 +295,41 @@ describe('client', () => {
                 expect(passage.buildMessage(method, params, callback2).id).to.equal(2);
             };
             expect(passage.buildMessage(method, params, callback1).id).to.equal(1);
+        });
+    });
+
+    describe('multi message', () => {
+        let passage;
+
+        beforeEach(() => {
+            passage = new Passage(URI);
+        });
+
+        it('should receive multiple notifications', done => {
+            const result = {};
+            function finish () {
+                expect(result).to.eql(expected);
+                done();
+            }
+            const expected = {
+                method1: { some: 'data' },
+                method2: 'some text'
+            };
+            let count = 0;
+            passage.on('method1', received => {
+                count++; result.method1 = received;
+                if (count === 2) finish();
+            });
+            passage.on('method2', received => {
+                count++; result.method2 = received;
+                if (count === 2) finish();
+            });
+            server.on('connection', (ws) => {
+                ws.send(JSON.stringify([
+                    { method: 'method1', params: expected.method1, jsonrpc },
+                    { method: 'method2', params: expected.method2, jsonrpc }
+                ]));
+            });
         });
     });
 });

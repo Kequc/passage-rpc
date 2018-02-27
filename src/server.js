@@ -18,6 +18,8 @@ const getPromise = (events, ws) => message => {
     return events[method](getAttr(message, 'params'), ws).catch(e => e);
 };
 
+const buildMessage = (method, params) => ({ method, params, jsonrpc });
+
 const buildResponse = ids => results => {
     const response = [];
 
@@ -68,11 +70,11 @@ function onError (error) {
     this.emit('rpc.error', error);
 }
 
-function notify (method, params) {
-    this.send(JSON.stringify({ method, params, jsonrpc }));
+function notify (method, params, callback) {
+    this.send(JSON.stringify(this.buildMessage(method, params)), callback);
 }
 
-module.exports = (WebSocket, EventEmitter) => {
+module.exports = (EventEmitter, Server) => {
     class PassageServer extends EventEmitter {
         constructor (options = {}) {
             super();
@@ -82,19 +84,20 @@ module.exports = (WebSocket, EventEmitter) => {
             const events = options.events || {};
             delete options.events;
 
-            this.connection = new WebSocket.Server(options);
-            this.connection.on('connection', ws => {
+            this.socket = new Server(options);
+            this.socket.on('connection', (ws, req) => {
                 ws.isAlive = true;
+                ws.buildMessage = buildMessage;
                 ws.notify = notify;
                 ws.on('pong', onPong);
                 ws.on('message', onMessage(events));
                 ws.on('close', onClose);
                 ws.on('error', onError);
-                this.emit('rpc.connection', ws);
+                this.emit('rpc.connection', ws, req);
             });
 
             this._interval = setInterval(() => {
-                for (const client of this.connection.clients) {
+                for (const client of this.socket.clients) {
                     if (client.isAlive) {
                         client.isAlive = false;
                         client.ping('', false, true);

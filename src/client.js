@@ -6,15 +6,15 @@ function onOpen () {
 }
 
 function onClose () {
-    if (this.options.reconnect && !this.connection.killed && this._tries <= this.options.reconnectTries) {
+    if (this.reconnect && !this.connection.killed && this._tries <= this.reconnectTries) {
         this._tries++;
-        setTimeout(() => { this.connect(); }, this.options.reconnectTimeout);
+        setTimeout(() => { this.connect(); }, this.reconnectTimeout);
     }
     this.emit('rpc.close');
 }
 
-function onError (event) {
-    this.emit('rpc.error', event);
+function onError (error) {
+    this.emit('rpc.error', error);
 }
 
 function runCallback (id, error, result) {
@@ -40,6 +40,7 @@ const TYPE = {
     RESPONSE: 'response',
     NOTIFICATION: 'notification'
 };
+const OPEN = 1;
 
 function messageType (message) {
     if (typeof message !== 'object') return TYPE.INVALID;
@@ -51,12 +52,12 @@ function messageType (message) {
     return TYPE.INVALID;
 }
 
-function onMessage (event) {
-    this.emit('rpc.message', event.data);
+function onMessage (data) {
+    this.emit('rpc.message', data);
     
     let messages;
     try {
-        messages = JSON.parse(event.data);
+        messages = JSON.parse(data);
         if (!Array.isArray(messages)) messages = [messages];
     } catch (e) {
         return;
@@ -89,18 +90,22 @@ function runTimeout (id) {
 
 const numOrDef = (num, def) => (typeof num === 'number' ? num : def);
 
-module.exports = (WebSocket, EventEmitter) => {
+module.exports = (EventEmitter, WebSocket) => {
     class PassageClient extends EventEmitter {
         constructor (uri, options = {}) {
             super();
 
             this.uri = uri;
-            this.options = {
-                requestTimeout: numOrDef(options.requestTimeout, 6000),
-                reconnect: !!options.reconnect,
-                reconnectTimeout: numOrDef(options.reconnectTimeout, 2000),
-                reconnectTries: numOrDef(options.reconnectTries, 60)
-            };
+            this.wsConfig = Object.assign({}, options);
+            delete this.wsConfig.requestTimeout;
+            delete this.wsConfig.reconnect;
+            delete this.wsConfig.reconnectTimeout;
+            delete this.wsConfig.reconnectTries;
+
+            this.requestTimeout = numOrDef(options.requestTimeout, 6000);
+            this.reconnect = !!options.reconnect;
+            this.reconnectTimeout = numOrDef(options.reconnectTimeout, 2000);
+            this.reconnectTries = numOrDef(options.reconnectTries, 60);
 
             this._nextId = 1;
             this._tries = 0;
@@ -119,7 +124,7 @@ module.exports = (WebSocket, EventEmitter) => {
 
         connect () {
             this.close();
-            this.connection = new WebSocket(this.uri);
+            this.connection = new WebSocket(this.uri, this.wsConfig);
             this.connection.on('open', onOpen.bind(this));
             this.connection.on('close', onClose.bind(this));
             this.connection.on('error', onError.bind(this));
@@ -131,7 +136,7 @@ module.exports = (WebSocket, EventEmitter) => {
 
             const id = this._nextId++;
             this._callbacks[id] = callback;
-            const ms = numOrDef(timeout, this.options.requestTimeout);
+            const ms = numOrDef(timeout, this.requestTimeout);
             this._timeouts[id] = setTimeout(() => { runTimeout.call(this, id); }, ms);
 
             return id;
@@ -152,8 +157,10 @@ module.exports = (WebSocket, EventEmitter) => {
         }
 
         send (method, params, callback, timeout) {
-            if (this.connection === undefined) {
-                if (typeof callback === 'function') callback(new Error('No connection'));
+            if (this.connection.readyState !== OPEN) {
+                const connectionError = new Error('No connection');
+                if (typeof callback !== 'function') throw connectionError;
+                callback(connectionError);
                 return;
             }
             const payload = JSON.stringify(this.buildMessage(method, params, callback, timeout));
