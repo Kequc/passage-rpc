@@ -6,9 +6,9 @@ function onOpen () {
 }
 
 function onClose () {
-    if (this.reconnect && !this.connection.killed && this._tries <= this.reconnectTries) {
+    if (this.options.reconnect && !this.connection.killed && this._tries <= this.options.reconnectTries) {
         this._tries++;
-        setTimeout(() => { this.connect(); }, this.reconnectTimeout);
+        setTimeout(() => { this.connect(); }, this.options.reconnectTimeout);
     }
     this.emit('rpc.close');
 }
@@ -96,16 +96,12 @@ module.exports = (EventEmitter, WebSocket) => {
             super();
 
             this.uri = uri;
-            this.wsConfig = Object.assign({}, options);
-            delete this.wsConfig.requestTimeout;
-            delete this.wsConfig.reconnect;
-            delete this.wsConfig.reconnectTimeout;
-            delete this.wsConfig.reconnectTries;
-
-            this.requestTimeout = numOrDef(options.requestTimeout, 6000);
-            this.reconnect = !!options.reconnect;
-            this.reconnectTimeout = numOrDef(options.reconnectTimeout, 2000);
-            this.reconnectTries = numOrDef(options.reconnectTries, 60);
+            this.options = {
+                requestTimeout: numOrDef(options.requestTimeout, 6000),
+                reconnect: !!options.reconnect,
+                reconnectTimeout: numOrDef(options.reconnectTimeout, 2000),
+                reconnectTries: numOrDef(options.reconnectTries, 60)
+            };
 
             this._nextId = 1;
             this._tries = 0;
@@ -124,7 +120,7 @@ module.exports = (EventEmitter, WebSocket) => {
 
         connect () {
             this.close();
-            this.connection = new WebSocket(this.uri, this.wsConfig);
+            this.connection = new WebSocket(this.uri);
             this.connection.on('open', onOpen.bind(this));
             this.connection.on('close', onClose.bind(this));
             this.connection.on('error', onError.bind(this));
@@ -136,7 +132,7 @@ module.exports = (EventEmitter, WebSocket) => {
 
             const id = this._nextId++;
             this._callbacks[id] = callback;
-            const ms = numOrDef(timeout, this.requestTimeout);
+            const ms = numOrDef(timeout, this.options.requestTimeout);
             this._timeouts[id] = setTimeout(() => { runTimeout.call(this, id); }, ms);
 
             return id;

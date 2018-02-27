@@ -11,13 +11,17 @@ function getAttr (message, name) {
     return undefined;
 }
 
-const getPromise = (events, ws) => message => {
+const getPromise = (methods, ws) => message => {
     const method = getAttr(message, 'method');
+
     if (method === undefined || message.jsonrpc !== jsonrpc)
         return Promise.resolve(new Error('Invalid'));
-    if (events[method] === undefined)
+    if (methods[method] === undefined)
         return Promise.resolve(new Error('Missing'));
-    return events[method](getAttr(message, 'params'), ws).catch(e => e);
+
+    return Promise.resolve()
+        .then(methods[method](getAttr(message, 'params'), ws))
+        .catch(e => e);
 };
 
 const buildMessage = (method, params) => ({ method, params, jsonrpc });
@@ -68,30 +72,37 @@ function onClose () {
     this.emit('rpc.close');
 }
 
+function onListening () {
+    this.emit('rpc.listening');
+}
+
 function onError (error) {
     this.emit('rpc.error', error);
 }
 
 function notify (method, params, callback) {
-    this.send(JSON.stringify(this.buildMessage(method, params)), callback);
+    const payload = JSON.stringify(this.buildMessage(method, params));
+    this.send(payload, callback);
 }
 
 class PassageServer extends EventEmitter {
-    constructor (options = {}) {
+    constructor (options = {}, callback) {
         super();
 
         const heartrate = options.heartrate || 30000;
         delete options.heartrate;
-        const events = options.events || {};
-        delete options.events;
+        const methods = options.methods || {};
+        delete options.methods;
 
-        this.socket = new WebSocket.Server(options);
+        this.socket = new WebSocket.Server(options, callback);
+        this.socket.on('listening', onListening);
+        this.socket.on('error', onError);
         this.socket.on('connection', (ws, req) => {
             ws.isAlive = true;
             ws.buildMessage = buildMessage;
             ws.notify = notify;
             ws.on('pong', onPong);
-            ws.on('message', onMessage(events));
+            ws.on('message', onMessage(methods));
             ws.on('close', onClose);
             ws.on('error', onError);
             this.emit('rpc.connection', ws, req);

@@ -32,10 +32,7 @@ describe('client', () => {
 
         it('should create an instance', () => {
             expect(client.uri).to.equal(URI);
-            expect(client.requestTimeout).to.equal(DEFAULT_OPTIONS.requestTimeout);
-            expect(client.reconnect).to.equal(DEFAULT_OPTIONS.reconnect);
-            expect(client.reconnectTimeout).to.equal(DEFAULT_OPTIONS.reconnectTimeout);
-            expect(client.reconnectTries).to.equal(DEFAULT_OPTIONS.reconnectTries);
+            expect(client.options).to.eql(DEFAULT_OPTIONS);
             expect(client.connection).to.be.a(WebSocket);
         });
         it('should have event emitter', () => {
@@ -59,10 +56,7 @@ describe('client', () => {
             };
             const client = new PassageClient(URI, options);
             expect(client.uri).to.equal(URI);
-            expect(client.requestTimeout).to.equal(options.requestTimeout);
-            expect(client.reconnect).to.equal(options.reconnect);
-            expect(client.reconnectTimeout).to.equal(options.reconnectTimeout);
-            expect(client.reconnectTries).to.equal(options.reconnectTries);
+            expect(client.options).to.eql(options);
             expect(client.connection).to.be.a(WebSocket);
         });
         it('should ignore invalid input', () => {
@@ -76,10 +70,7 @@ describe('client', () => {
                 };
                 const client = new PassageClient(URI, options);
                 expect(client.uri).to.equal(URI);
-                expect(client.requestTimeout).to.equal(DEFAULT_OPTIONS.requestTimeout);
-                expect(client.reconnect).to.equal(DEFAULT_OPTIONS.reconnect);
-                expect(client.reconnectTimeout).to.equal(DEFAULT_OPTIONS.reconnectTimeout);
-                expect(client.reconnectTries).to.equal(DEFAULT_OPTIONS.reconnectTries);
+                expect(client.options).to.eql(DEFAULT_OPTIONS);
             }
         });
         it('should reconnect', done => {
