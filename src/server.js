@@ -1,3 +1,5 @@
+const EventEmitter = require('events');
+const WebSocket = require('ws');
 const jsonrpc = require('./version');
 
 function onPong () {
@@ -74,40 +76,47 @@ function notify (method, params, callback) {
     this.send(JSON.stringify(this.buildMessage(method, params)), callback);
 }
 
-module.exports = (EventEmitter, Server) => {
-    class PassageServer extends EventEmitter {
-        constructor (options = {}) {
-            super();
+class PassageServer extends EventEmitter {
+    constructor (options = {}) {
+        super();
 
-            const heartrate = options.heartrate || 30000;
-            delete options.heartrate;
-            const events = options.events || {};
-            delete options.events;
+        const heartrate = options.heartrate || 30000;
+        delete options.heartrate;
+        const events = options.events || {};
+        delete options.events;
 
-            this.socket = new Server(options);
-            this.socket.on('connection', (ws, req) => {
-                ws.isAlive = true;
-                ws.buildMessage = buildMessage;
-                ws.notify = notify;
-                ws.on('pong', onPong);
-                ws.on('message', onMessage(events));
-                ws.on('close', onClose);
-                ws.on('error', onError);
-                this.emit('rpc.connection', ws, req);
-            });
+        this.socket = new WebSocket.Server(options);
+        this.socket.on('connection', (ws, req) => {
+            ws.isAlive = true;
+            ws.buildMessage = buildMessage;
+            ws.notify = notify;
+            ws.on('pong', onPong);
+            ws.on('message', onMessage(events));
+            ws.on('close', onClose);
+            ws.on('error', onError);
+            this.emit('rpc.connection', ws, req);
+        });
 
-            this._interval = setInterval(() => {
-                for (const client of this.socket.clients) {
-                    if (client.isAlive) {
-                        client.isAlive = false;
-                        client.ping('', false, true);
-                    } else {
-                        client.terminate();
-                    }
+        this._interval = setInterval(() => {
+            for (const client of this.socket.clients) {
+                if (client.isAlive) {
+                    client.isAlive = false;
+                    client.ping('', false, true);
+                } else {
+                    client.terminate();
                 }
-            }, heartrate);
-        }
+            }
+        }, heartrate);
     }
 
-    return PassageServer;
-};
+    close (callback) {
+        clearInterval(this._interval);
+        try {
+            this.socket.close(callback);
+        } catch (e) {
+            if (callback) callback();
+        }
+    }
+}
+
+module.exports = PassageServer;

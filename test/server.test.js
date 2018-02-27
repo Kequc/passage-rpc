@@ -1,53 +1,31 @@
-// const EventEmitter = require('events');
-// const expect = require('expect.js');
-// const { Server, WebSocket } = require('mock-socket');
-// const Passage = require('../src/server')(EventEmitter, Server);
-// // const jsonrpc = require('../src/version');
+const expect = require('expect.js');
+const WebSocket = require('ws');
+const PassageServer = require('../src/server');
+// const jsonrpc = require('../src/version');
 
-// // mock ws library
-// WebSocket.prototype.on = WebSocket.prototype.addEventListener;
+const PORT = 9000;
+const URI = `ws://localhost:${PORT}`;
 
-// const URI = 'ws://fake-server.io';
-// const DEFAULT_OPTIONS = {
-//     requestTimeout: 6000,
-//     reconnect: false,
-//     reconnectTimeout: 2000,
-//     reconnectTries: 60
-// };
+describe('server', () => {
+    let client;
 
-// describe('client', () => {
-//     let server;
+    beforeEach(() => {
+        client = new WebSocket(URI);
+        client.on('error', () => {});
+    });
 
-//     beforeEach(() => {
-//         server = new Server(URI);
-//     });
-//     afterEach(done => {
-//         server.stop(done);
-//     });
+    describe('defaults', () => {
+        let server;
 
-//     describe('defaults', () => {
-//         let passage;
+        beforeEach(() => {
+            server = new PassageServer({ port: PORT });
+        });
+        afterEach(done => {
+            server.close(done);
+        });
 
-//         beforeEach(() => {
-//             passage = new Passage(URI);
-//         });
-
-//         it('should create an instance', () => {
-//             expect(passage.uri).to.equal(URI);
-//             expect(passage.requestTimeout).to.equal(DEFAULT_OPTIONS.requestTimeout);
-//             expect(passage.reconnect).to.equal(DEFAULT_OPTIONS.reconnect);
-//             expect(passage.reconnectTimeout).to.equal(DEFAULT_OPTIONS.reconnectTimeout);
-//             expect(passage.reconnectTries).to.equal(DEFAULT_OPTIONS.reconnectTries);
-//             expect(passage.connection).to.be.a(WebSocket);
-//         });
-//         it('should have event emitter', () => {
-//             const name = 'my.event';
-//             const handler = () => {};
-//             passage.on(name, handler);
-//             expect(passage.listenerCount(name)).to.equal(1);
-//             expect(passage.listeners(name)[0]).to.equal(handler);
-//             passage.removeListener(name, handler);
-//             expect(passage.listenerCount(name)).to.equal(0);
-//         });
-//     });
-// });
+        it('should create an instance', () => {
+            expect(server.socket).to.be.a(WebSocket.Server);
+        });
+    });
+});
