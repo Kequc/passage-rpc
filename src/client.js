@@ -1,5 +1,3 @@
-const EventEmitter = require('events');
-
 const jsonrpc = '2.0';
 
 function onOpen () {
@@ -85,29 +83,7 @@ function runTimeout (id) {
 
 const numOrDef = (num, def) => (typeof num === 'number' ? num : def);
 
-function buildMessages (arr) {
-    const result = [];
-
-    for (const obj of arr) {
-        if (typeof obj !== 'object' || typeof obj.method !== 'string') {
-            if (typeof obj.callback === 'function') obj.callback(new Error('Invalid payload'));
-            continue;
-        }
-
-        const data = {
-            id: (typeof obj.callback === 'function' ? this._nextId++ : undefined),
-            method: obj.method,
-            params: obj.params,
-            jsonrpc
-        };
-
-        result.push({ id: data.id, payload: JSON.stringify(data), callback: obj.callback });
-    }
-
-    return result;
-}
-
-module.exports = (WebSocket) => {
+module.exports = (WebSocket, EventEmitter) => {
     class PassageClient extends EventEmitter {
         constructor (uri, options = {}) {
             super();
@@ -142,38 +118,36 @@ module.exports = (WebSocket) => {
             this.connection.on('message', onMessage.bind(this));
         }
 
-        sendAll (arr, timeout) {
-            if (this.connection === undefined) {
-                for (const obj of arr) {
-                    if (typeof obj.callback === 'function') obj.callback(new Error('No connection'));
-                }
-                return;
-            }
-
-            const messages = buildMessages.call(this, arr);
-
-            for (const message of messages) {
-                if (message.id !== undefined) {
-                    this._callbacks[message.id] = message.callback;
-                    const ms = numOrDef(timeout, this.options.requestTimeout);
-                    setTimeout(() => { runTimeout.call(this, message.id); }, ms);
-                }
-            }
-
-            if (messages.length > 1) {
-                this.connection.send('[' + messages.map(message => message.payload).join(',') + ']');
-            } else if (messages.length === 1) {
-                this.connection.send(messages[0].payload);
-            }
+        expectResponse (callback, timeout) {
+            if (typeof callback !== 'function') return undefined;
+            const id = this._nextId++;
+            this._callbacks[id] = callback;
+            const ms = numOrDef(timeout, this.options.requestTimeout);
+            setTimeout(() => { runTimeout.call(this, id); }, ms);
+            return id;
         }
 
-        send (method, params, callback, timeout) {
+        buildMessage (method, params, callback, timeout) {
             if (typeof params === 'function') {
                 timeout = callback;
                 callback = params;
                 params = undefined;
             }
-            this.sendAll([{ method, params, callback }], timeout);
+            return {
+                id: this.expectResponse(callback, timeout),
+                method,
+                params,
+                jsonrpc
+            };
+        }
+
+        send (method, params, callback, timeout) {
+            if (this.connection === undefined) {
+                if (typeof callback === 'function') callback(new Error('No connection'));
+                return;
+            }
+            const payload = JSON.stringify(this.buildMessage(method, params, callback, timeout));
+            this.connection.send(payload);
         }
     }
 

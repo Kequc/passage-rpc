@@ -1,8 +1,9 @@
+const EventEmitter = require('events');
 const expect = require('expect.js');
 const { Server, WebSocket } = require('mock-socket');
-const Passage = require('../src/client')(WebSocket);
+const Passage = require('../src/client')(WebSocket, EventEmitter);
 
-// mock-socket server side
+// server side
 WebSocket.prototype.on = WebSocket.prototype.addEventListener;
 
 const URI = 'ws://fake-server.io';

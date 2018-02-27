@@ -2,11 +2,9 @@
     "env": {
         "node": true,
         "mocha": true,
-        "es6": true
+        "es6": true,
+        "browser": true
     },
-    "plugins": [
-        "promise"
-    ],
     "extends": "eslint:recommended",
     "parserOptions": {
         "sourceType": "module"

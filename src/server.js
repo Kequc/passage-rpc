@@ -1,5 +1,3 @@
-const EventEmitter = require('events');
-
 const jsonrpc = '2.0';
 
 function onPong () {
@@ -74,7 +72,7 @@ function notify (method, params) {
     this.send(JSON.stringify({ method, params, jsonrpc }));
 }
 
-module.exports = (WebSocket) => {
+module.exports = (WebSocket, EventEmitter) => {
     class PassageServer extends EventEmitter {
         constructor (options = {}) {
             super();
