@@ -2,13 +2,13 @@
 
 #### Client and server side JSON-RPC 2.0 websockets library
 
-This is a websocket subprotocol implementation for remote procedure calls supporting server response.
+This is a websocket subprotocol implementation for remote procedure calls supporting server responses.
 
 http://www.jsonrpc.org/specification
 
 ## Installation from NPM
 
-Install the package from npm.
+Install the package.
 
 ```text
 npm i passage-rpc --save
@@ -28,7 +28,7 @@ import Passage from 'passage-rpc';
 
 ## Installation from IIFE
 
-Download and include the library onto your page from this repositories' `/dist` directory.
+Download and include the library onto your page from the `/dist` directory.
 
 ```html
 <script src="/javascripts/passage-rpc.min.js"></script>
@@ -127,7 +127,7 @@ Creates a simple object for consumption by the server. It takes the same values 
 
 #### expectResponse (callback: (error: Error, result?: any) => void, timeout?: number) => number
 
-Returns a number representing a message id. The callback will timeout if a response containing the message id is not received in time. You may only need to use this if you are building a message object completely by hand.
+Returns a number representing a message id. The callback will timeout if a response containing the message id is not received in time. You may only need to use this if you are building a message object by hand.
 
 ## Server usage
 
@@ -143,7 +143,7 @@ const wss = new Passage.Server(options, () => {
     console.log('Listening on port: 8080');
 });
 
-wss.on('rpc.connection', (ws) => {
-    ws.notify('myapp.fromSpace', 'rocket man');
+wss.on('rpc.connection', () => {
+    console.log('client connected!');
 });
 ```
