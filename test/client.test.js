@@ -237,11 +237,12 @@ describe('client', () => {
         const params = 'some text';
 
         beforeEach(() => {
-            passage = new Passage(URI);
+            // timeout set to 0 for faster test
+            passage = new Passage(URI, { requestTimeout: 0 });
         });
 
         it('should not expect a response', () => {
-            const id = passage.expectResponse(undefined, 0);
+            const id = passage.expectResponse(undefined);
             expect(id).to.equal(undefined);
         });
         it('should expect a response', done => {
@@ -249,7 +250,7 @@ describe('client', () => {
                 expect(err).to.be.a(Error);
                 done();
             };
-            const id = passage.expectResponse(callback, 0);
+            const id = passage.expectResponse(callback);
             expect(id).to.equal(1);
         });
         it('should build a message', () => {
@@ -262,7 +263,7 @@ describe('client', () => {
                 done();
             };
             const expected = { id: 1, method, params, jsonrpc };
-            expect(passage.buildMessage(method, params, callback, 0)).to.eql(expected);
+            expect(passage.buildMessage(method, params, callback)).to.eql(expected);
         });
         it('should increment id', done => {
             const callback2 = (err) => {
@@ -271,9 +272,9 @@ describe('client', () => {
             };
             const callback1 = (err) => {
                 expect(err).to.be.a(Error);
-                expect(passage.buildMessage(method, params, callback2, 0).id).to.equal(2);
+                expect(passage.buildMessage(method, params, callback2).id).to.equal(2);
             };
-            expect(passage.buildMessage(method, params, callback1, 0).id).to.equal(1);
+            expect(passage.buildMessage(method, params, callback1).id).to.equal(1);
         });
     });
 });
