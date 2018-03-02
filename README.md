@@ -82,7 +82,7 @@ Maximum number of reconnection attempts.
 When the server sends a notification to your application, it triggers an event. You may choose to set a listener using `.on(method, callback)`. There are a few included events the client library provides.
 
 | method | description | params |
-| - | - |
+| - | - | - |
 | `rpc.message` | Message was received. | data |
 | `rpc.open` | Connection established. | |
 | `rpc.close` | Connection closed. | |
@@ -185,7 +185,7 @@ const methods = {
 Like the client, the server provides several events.
 
 | method | description | params |
-| - | - |
+| - | - | - |
 | `rpc.listening` | Server is listening. | |
 | `rpc.connection` | Connection established. | ConnectedClient, Req object |
 | `rpc.error` | Error has occurred. | Error |
@@ -193,7 +193,7 @@ Like the client, the server provides several events.
 The `rpc.connection` event delivers a connected client instance, and a `req` object. The connected client also comes with events.
 
 | method | description | params |
-| - | - |
+| - | - | - |
 | `rpc.message` | Message was received. | data |
 | `rpc.close` | Connection closed. | |
 | `rpc.error` | Error has occurred. | Error |
