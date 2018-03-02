@@ -6,7 +6,7 @@ import uglify from 'rollup-plugin-uglify';
 export default {
     input: 'browser.js',
     output: {
-        file: 'dist/passage-client.min.js',
+        file: 'dist/passage-rpc.min.js',
         format: 'iife',
         name: 'Passage'
     },

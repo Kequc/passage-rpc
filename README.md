@@ -133,7 +133,7 @@ Returns a number representing a message id. The callback will timeout if a respo
 
 ## Server usage
 
-The server implementation is built on the [npm ws](https://github.com/websockets/ws) library and shares several similarities. There are a few additional options and events utilised for JSON-RPC.
+The server implementation is built on the [npm ws](https://github.com/websockets/ws) library and shares several similarities. There are a few additional options and events utilised for JSON-RPC. The second parameter is an alias for the `rpc.listening` event.
 
 ```javascript
 const options = {
@@ -149,27 +149,23 @@ const wss = new Passage.Server(options, () => {
 });
 
 wss.on('rpc.connection', () => {
-    console.log('client connected!');
+    console.log('connected!');
 });
 ```
 
-The second parameter is a callback which runs when the server is listening for requests. It is an alias for the `rpc.listening` event which you will learn about below.
-
 #### heartrate <default: 30000>
 
-The server will periodically ping each of the connected clients and terminate ones which do not respond in time. Checking every 30 seconds is a good default but you might wish to adjust this.
+Periodically each of the connected clients will be pinged and terminate ones for which there is no response. Checking every 30 seconds is a good default but you might wish to adjust this.
 
 #### methods <default: {}>
 
-The methods parameter is a dictionary of methods your server listens to from the client. In this case if a client sends `myapp.hello` the server will run the associated function and respond with `"hi"`.
+The methods parameter is a dictionary of procedures your server listens to from the client. In this case if a client sends `myapp.hello` the server will run the associated function and respond with `"hi"`. You may return an `Error` instead, or even nothing at all.
 
-You may return an `Error` instead, or even nothing at all. Whether the server responds to a request is dependent on the client. If the client is not waiting for a response the server will not send one.
-
-Every method when called is provided with parameters from the client, as well as the connection, in the following format.
+Whether the server responds is dependent on the client. If the client is not waiting for a response the server will not send one. Every method is expected to be in the following format.
 
 `(params: any, ws: WebSocket) => any`
 
-You must return a `Promise` if you are doing something that is asyncronous.
+You must return a `Promise` if you are doing something which is asyncronous.
 
 For example:
 
@@ -184,7 +180,7 @@ const methods = {
 
 ## Events
 
-Like the client, the server also provides several events.
+Like the client, the server provides several events.
 
 | method | description |
 | - | - |
@@ -200,15 +196,15 @@ The `rpc.connection` event delivers the connected `WebSocket` instance, and a `r
 | `rpc.close` | Connection closed. |
 | `rpc.error` | Error has occurred. |
 
-## Instance
+## WebSocket Instance
 
-#### ws.notify(method: string, params?: any) => void
+#### notify(method: string, params?: any) => void
 
 Send a notification to the connected client.
 
 ## Sending more than one notification at the same time
 
-Sending multiple messages at once must be done manually. A full example can be seen below.
+Sending multiple messages at once must be done manually, a full example from the server can be seen below.
 
 ```javascript
 const wss = new Passage.Server();
@@ -225,6 +221,4 @@ wss.on('rpc.connection', (ws) => {
 
 #### buildMessage (method: string, [params: any]) => Object
 
-This creates a simple object for consumption by the client. It takes the same values as the `notify` method, however does not stringify or send the message.
-
-You then use this in conjunction with the raw `send` method, to deliver the messages.
+This creates a simple object for consumption by the client. It takes the same values as the `notify` method, however does not stringify or send the message. You then use this in conjunction with the raw `send` method to deliver the messages.
