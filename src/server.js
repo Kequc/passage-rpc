@@ -19,8 +19,7 @@ const getPromise = (methods, ws) => message => {
     if (methods[method] === undefined)
         return Promise.resolve(new Error('Missing'));
 
-    return Promise.resolve()
-        .then(methods[method](getAttr(message, 'params'), ws))
+    return Promise.resolve(methods[method](getAttr(message, 'params'), ws))
         .catch(e => e);
 };
 
@@ -95,8 +94,8 @@ class PassageServer extends EventEmitter {
         delete options.methods;
 
         this.socket = new WebSocket.Server(options, callback);
-        this.socket.on('listening', onListening);
-        this.socket.on('error', onError);
+        this.socket.on('listening', onListening.bind(this));
+        this.socket.on('error', onError.bind(this));
         this.socket.on('connection', (ws, req) => {
             ws.isAlive = true;
             ws.buildMessage = buildMessage;

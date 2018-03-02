@@ -16,26 +16,22 @@ const DEFAULT_OPTIONS = {
 describe('client', () => {
     let server;
 
-    beforeEach(() => {
-        server = new WebSocket.Server({ port: PORT });
+    beforeEach(done => {
+        server = new WebSocket.Server({ port: PORT }, done);
     });
     afterEach(done => {
         server.close(done);
     });
 
-    describe('defaults', () => {
-        let client;
-
-        beforeEach(() => {
-            client = new PassageClient(URI);
-        });
-
+    describe('constructor', () => {
         it('should create an instance', () => {
+            const client = new PassageClient(URI);
             expect(client.uri).to.equal(URI);
             expect(client.options).to.eql(DEFAULT_OPTIONS);
             expect(client.connection).to.be.a(WebSocket);
         });
         it('should have event emitter', () => {
+            const client = new PassageClient(URI);
             const name = 'my.event';
             const handler = () => {};
             client.on(name, handler);
@@ -44,9 +40,6 @@ describe('client', () => {
             client.removeListener(name, handler);
             expect(client.listenerCount(name)).to.equal(0);
         });
-    });
-
-    describe('custom options', () => {
         it('should create an instance with custom options', () => {
             const options = {
                 requestTimeout: 600,
