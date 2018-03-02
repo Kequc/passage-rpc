@@ -123,7 +123,6 @@ module.exports = (EventEmitter, WebSocket) => {
         connect () {
             this.close();
             this.connection = new WebSocket(this.uri);
-            this.connection.on = this.connection.on || this.connection.addEventListener;
             this.connection.on('open', onOpen.bind(this));
             this.connection.on('close', onClose.bind(this));
             this.connection.on('error', onError.bind(this));
