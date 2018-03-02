@@ -37,6 +37,18 @@ describe('client-server', () => {
     });
     it('client should send a notification', done => {
         const method = 'myapp.notification';
+        const methods = { [method]: (result) => {
+            expect(result).to.be(undefined);
+            done();
+        } };
+        buildServer(methods, () => {
+            client.on('rpc.open', () => {
+                client.send(method);
+            });
+        });
+    });
+    it('client should send a notification with params', done => {
+        const method = 'myapp.notification';
         const params = { hi: 'there' };
         const methods = { [method]: (result) => {
             expect(result).to.eql(params);
@@ -49,6 +61,18 @@ describe('client-server', () => {
         });
     });
     it('server should send a notification', done => {
+        const method = 'myapp.notification';
+        buildServer(() => {
+            client.on(method, (result) => {
+                expect(result).to.be(undefined);
+                done();
+            });
+            server.on('rpc.connection', (ws) => {
+                ws.notify(method);
+            });
+        });
+    });
+    it('server should send a notification with params', done => {
         const method = 'myapp.notification';
         const params = { hi: 'there' };
         buildServer(() => {
@@ -63,6 +87,19 @@ describe('client-server', () => {
     });
     it('server should respond to a request', done => {
         const method = 'myapp.request';
+        const methods = { [method]: () => {} };
+        buildServer(methods, () => {
+            client.on('rpc.open', () => {
+                client.send(method, (err, result) => {
+                    expect(err).to.be(undefined);
+                    expect(result).to.be(undefined);
+                    done();
+                });
+            });
+        });
+    });
+    it('server should respond to a request with params', done => {
+        const method = 'myapp.request';
         const params = { some: 'data' };
         const response = { a: 'response' };
         const methods = { [method]: (result, ws) => {
@@ -73,7 +110,7 @@ describe('client-server', () => {
         buildServer(methods, () => {
             client.on('rpc.open', () => {
                 client.send(method, params, (err, result) => {
-                    expect(err).to.equal(undefined);
+                    expect(err).to.be(undefined);
                     expect(result).to.eql(response);
                     done();
                 });

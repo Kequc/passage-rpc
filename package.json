@@ -1,6 +1,6 @@
 {
   "name": "passage-node",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Client and server side JSON-RPC websockets",
   "main": "main.js",
   "browser": "browser.js",

@@ -10,12 +10,12 @@ describe('server', () => {
     let server;
     let client;
 
-    function buildServer (options, ready) {
-        if (typeof options === 'function') {
-            ready = options;
-            options = undefined;
+    function buildServer (methods, ready) {
+        if (typeof methods === 'function') {
+            ready = methods;
+            methods = undefined;
         }
-        server = new PassageServer(Object.assign({ port: PORT }, options), () => {
+        server = new PassageServer({ port: PORT, methods }, () => {
             client = new WebSocket(URI);
             client.on('error', () => {}); // must define error handler
             ready();
@@ -105,7 +105,7 @@ describe('server', () => {
                 expect(received).to.eql(params);
                 done();
             } };
-            buildServer({ methods }, () => {
+            buildServer(methods, () => {
                 client.on('open', () => {
                     client.send(JSON.stringify({ method, params, jsonrpc }));
                 });
@@ -142,7 +142,7 @@ describe('server', () => {
         it('should send a response', done => {
             const expected = { some: 'data' };
             const methods = { [method]: () => expected };
-            buildServer({ methods }, () => {
+            buildServer(methods, () => {
                 client.on('message', (data) => {
                     expect(JSON.parse(data)).to.eql({ id: 1, result: expected, jsonrpc });
                     done();
@@ -158,7 +158,7 @@ describe('server', () => {
             error.code = expected.code;
             error.data = expected.data;
             const methods = { [method]: () => error };
-            buildServer({ methods }, () => {
+            buildServer(methods, () => {
                 client.on('message', (data) => {
                     expect(JSON.parse(data)).to.eql({ id: 1, error: expected, jsonrpc });
                     done();
@@ -176,7 +176,7 @@ describe('server', () => {
         it('should send a response', done => {
             const expected = { some: 'data' };
             const methods = { [method]: () => Promise.resolve(expected) };
-            buildServer({ methods }, () => {
+            buildServer(methods, () => {
                 client.on('message', (data) => {
                     expect(JSON.parse(data)).to.eql({ id: 1, result: expected, jsonrpc });
                     done();
@@ -192,7 +192,7 @@ describe('server', () => {
             error.code = expected.code;
             error.data = expected.data;
             const methods = { [method]: () => Promise.reject(error) };
-            buildServer({ methods }, () => {
+            buildServer(methods, () => {
                 client.on('message', (data) => {
                     expect(JSON.parse(data)).to.eql({ id: 1, error: expected, jsonrpc });
                     done();

@@ -133,6 +133,15 @@ describe('client', () => {
                 ws.send(JSON.stringify({ method, params, jsonrpc }));
             });
         });
+        it('should receive a notification with params', done => {
+            client.on(method, received => {
+                expect(received).to.be(undefined);
+                done();
+            });
+            server.on('connection', (ws) => {
+                ws.send(JSON.stringify({ method, jsonrpc }));
+            });
+        });
         it('should send a notification', done => {
             server.on('connection', (ws) => {
                 ws.on('message', data => {
@@ -167,6 +176,21 @@ describe('client', () => {
         });
 
         it('should receive a response', done => {
+            server.on('connection', (ws) => {
+                ws.on('message', data => {
+                    expect(JSON.parse(data)).to.eql({ id: 1, method, jsonrpc });
+                    ws.send(JSON.stringify({ id: 1, jsonrpc }));
+                });
+            });
+            client.on('rpc.open', () => {
+                client.send(method, (error, result) => {
+                    expect(error).to.be(undefined);
+                    expect(result).to.be(undefined);
+                    done();
+                });
+            });
+        });
+        it('should receive a response with params', done => {
             const expected = { some: 'data' };
             server.on('connection', (ws) => {
                 ws.on('message', data => {
@@ -246,7 +270,7 @@ describe('client', () => {
 
         it('should not expect a response', () => {
             const id = client.expectResponse(undefined);
-            expect(id).to.equal(undefined);
+            expect(id).to.be(undefined);
         });
         it('should expect a response', done => {
             const callback = (err) => {

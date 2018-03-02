@@ -46,9 +46,7 @@ function messageType (message) {
     if (typeof message !== 'object') return TYPE.INVALID;
     if (message.jsonrpc !== jsonrpc) return TYPE.INVALID;
     if (message.method !== undefined) return TYPE.NOTIFICATION;
-    if (message.id === undefined) return TYPE.INVALID;
-    if (message.error !== undefined) return TYPE.RESPONSE;
-    if (message.result !== undefined) return TYPE.RESPONSE;
+    if (message.id !== undefined) return TYPE.RESPONSE;
     return TYPE.INVALID;
 }
 

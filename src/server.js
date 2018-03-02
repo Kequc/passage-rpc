@@ -45,7 +45,7 @@ const buildResponse = ids => results => {
     return (response.length <= 1 ? response[0] : response);
 };
 
-const onMessage = events => function (data) {
+const onMessage = methods => function (data) {
     this.emit('rpc.message', data);
 
     let messages;
@@ -57,7 +57,7 @@ const onMessage = events => function (data) {
     }
 
     const ids = messages.map(message => getAttr(message, 'id') || null);
-    const promises = messages.map(getPromise(events, this));
+    const promises = messages.map(getPromise(methods, this));
 
     Promise.all(promises)
         .then(buildResponse(ids))
