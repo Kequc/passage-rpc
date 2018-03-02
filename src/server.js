@@ -1,5 +1,6 @@
 const EventEmitter = require('events');
 const WebSocket = require('ws');
+const errBadRequest = require('./err/bad-request');
 const jsonrpc = require('./version');
 
 function getAttr (request, name) {
@@ -11,9 +12,9 @@ const getPromise = (methods, ws) => request => {
     const method = getAttr(request, 'method');
 
     if (method === undefined || request.jsonrpc !== jsonrpc)
-        return Promise.resolve(new Error('Invalid'));
+        return Promise.resolve(errBadRequest());
     if (methods[method] === undefined)
-        return Promise.resolve(new Error('Missing'));
+        return Promise.resolve(errBadRequest({ message: `Method ${method} does not exist.` }));
 
     return Promise.resolve(methods[method](getAttr(request, 'params'), ws)).catch(e => e);
 };
