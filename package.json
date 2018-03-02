@@ -1,6 +1,6 @@
 {
   "name": "passage-rpc",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Client and server side JSON-RPC websockets",
   "main": "main.js",
   "browser": "browser.js",
@@ -33,7 +33,7 @@
     "rollup": "^0.55.0",
     "rollup-plugin-buble": "^0.18.0",
     "rollup-plugin-commonjs": "^8.2.6",
-    "rollup-plugin-node-resolve": "^3.0.3",
+    "rollup-plugin-node-builtins": "^2.1.2",
     "rollup-plugin-uglify": "^3.0.0"
   },
   "dependencies": {

@@ -1,8 +1,7 @@
-const EventEmitter = require('events');
 const expect = require('expect.js');
 const WebSocket = require('ws');
 const PassageServer = require('../src/server');
-const PassageClient = require('../src/client')(EventEmitter, WebSocket);
+const PassageClient = require('../src/client')(WebSocket);
 
 const PORT = 9000;
 const URI = `ws://localhost:${PORT}`;

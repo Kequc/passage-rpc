@@ -1,7 +1,6 @@
-const EventEmitter = require('events');
 const expect = require('expect.js');
 const WebSocket = require('ws');
-const PassageClient = require('../src/client')(EventEmitter, WebSocket);
+const PassageClient = require('../src/client')(WebSocket);
 const jsonrpc = require('../src/version');
 
 const PORT = 9000;

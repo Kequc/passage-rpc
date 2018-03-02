@@ -1,3 +1,4 @@
+const EventEmitter = require('events');
 const jsonrpc = require('./version');
 
 function onOpen () {
@@ -35,40 +36,26 @@ function runCallback (id, error, result) {
     delete this._callbacks[id];
 }
 
-const TYPE = {
-    INVALID: 'invalid',
-    RESPONSE: 'response',
-    NOTIFICATION: 'notification'
-};
-const OPEN = 1;
-
-function messageType (message) {
-    if (typeof message !== 'object') return TYPE.INVALID;
-    if (message.jsonrpc !== jsonrpc) return TYPE.INVALID;
-    if (message.method !== undefined) return TYPE.NOTIFICATION;
-    if (message.id !== undefined) return TYPE.RESPONSE;
-    return TYPE.INVALID;
+function getMessages (data) {
+    try {
+        const messages = JSON.parse(data);
+        return (Array.isArray(messages) ? messages : [messages]);
+    } catch (e) {
+        return [];
+    }
 }
 
 function onMessage (data) {
     this.emit('rpc.message', data);
     
-    let messages;
-    try {
-        messages = JSON.parse(data);
-        if (!Array.isArray(messages)) messages = [messages];
-    } catch (e) {
-        return;
-    }
-    
-    for (const message of messages) {
-        switch (messageType(message)) {
-        case TYPE.NOTIFICATION:
+    for (const message of getMessages(data)) {
+        if (typeof message !== 'object') continue;
+        if (message.jsonrpc !== jsonrpc) continue;
+
+        if (message.method !== undefined) {
             this.emit(message.method, message.params);
-            break;
-        case TYPE.RESPONSE:
+        } else if (message.id !== undefined) {
             runCallback.call(this, message.id, message.error, message.result);
-            break;
         }
     }
 }
@@ -88,7 +75,7 @@ function runTimeout (id) {
 
 const numOrDef = (num, def) => (typeof num === 'number' ? num : def);
 
-module.exports = (EventEmitter, WebSocket) => {
+module.exports = (WebSocket) => {
     class PassageClient extends EventEmitter {
         constructor (uri, options = {}) {
             super();
@@ -155,7 +142,7 @@ module.exports = (EventEmitter, WebSocket) => {
         }
 
         send (method, params, callback, timeout) {
-            if (this.connection.readyState !== OPEN) {
+            if (this.connection.readyState !== PassageClient.OPEN) {
                 const connectionError = new Error('No connection');
                 if (typeof callback !== 'function') throw connectionError;
                 callback(connectionError);

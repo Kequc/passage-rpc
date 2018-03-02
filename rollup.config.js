@@ -1,6 +1,6 @@
 import buble from 'rollup-plugin-buble';
+import builtins from 'rollup-plugin-node-builtins';
 import commonjs from 'rollup-plugin-commonjs';
-import resolve from 'rollup-plugin-node-resolve';
 import uglify from 'rollup-plugin-uglify';
 
 export default {
@@ -11,7 +11,7 @@ export default {
         name: 'Passage'
     },
     plugins: [
-        resolve({ browser: true }),
+        builtins(),
         commonjs(),
         buble({ transforms: { dangerousForOf: true } }),
         uglify()
