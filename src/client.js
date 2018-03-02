@@ -109,6 +109,10 @@ module.exports = (EventEmitter, WebSocket) => {
             this.connect();
         }
 
+        get statusCode () {
+            return this.connection.statusCode;
+        }
+
         close () {
             if (this.connection === undefined) return;
 
@@ -161,6 +165,11 @@ module.exports = (EventEmitter, WebSocket) => {
             this.connection.send(payload);
         }
     }
+
+    PassageClient.CONNECTING = 0;
+    PassageClient.OPEN = 1;
+    PassageClient.CLOSING = 2;
+    PassageClient.CLOSED = 3;
 
     return PassageClient;
 };

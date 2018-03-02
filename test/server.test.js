@@ -54,7 +54,7 @@ describe('server', () => {
 
         it('should trigger rpc.connection on connection', done => {
             server.on('rpc.connection', (ws, req) => {
-                expect(ws).to.be.a(WebSocket);
+                expect(ws.connection).to.be.a(WebSocket);
                 expect(req).to.be.a(Object);
                 done();
             });
@@ -81,7 +81,7 @@ describe('server', () => {
                     expect(e).to.be.a(Error);
                     done();
                 });
-                ws.emit('error', new Error());
+                ws.connection.emit('error', new Error());
             });
         });
         it('should trigger ws rpc.message on message', done => {
@@ -118,7 +118,7 @@ describe('server', () => {
                     done();
                 });
                 server.on('rpc.connection', (ws) => {
-                    ws.notify(method);
+                    ws.send(method);
                 });
             });
         });
@@ -130,7 +130,7 @@ describe('server', () => {
                     done();
                 });
                 server.on('rpc.connection', (ws) => {
-                    ws.notify(method, params);
+                    ws.send(method, params);
                 });
             });
         });

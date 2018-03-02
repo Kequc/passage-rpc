@@ -68,7 +68,7 @@ describe('client-server', () => {
                 done();
             });
             server.on('rpc.connection', (ws) => {
-                ws.notify(method);
+                ws.send(method);
             });
         });
     });
@@ -81,7 +81,7 @@ describe('client-server', () => {
                 done();
             });
             server.on('rpc.connection', (ws) => {
-                ws.notify(method, params);
+                ws.send(method, params);
             });
         });
     });
@@ -104,7 +104,7 @@ describe('client-server', () => {
         const response = { a: 'response' };
         const methods = { [method]: (result, ws) => {
             expect(result).to.eql(params);
-            expect(ws).to.be.a(WebSocket);
+            expect(ws.connection).to.be.a(WebSocket);
             return response;
         } };
         buildServer(methods, () => {

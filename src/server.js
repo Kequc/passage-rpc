@@ -2,28 +2,30 @@ const EventEmitter = require('events');
 const WebSocket = require('ws');
 const jsonrpc = require('./version');
 
-function onPong () {
-    this.isAlive = true;
-}
-
-function getAttr (message, name) {
-    if (typeof message === 'object') return message[name];
+function getAttr (request, name) {
+    if (typeof request === 'object') return request[name];
     return undefined;
 }
 
-const getPromise = (methods, ws) => message => {
-    const method = getAttr(message, 'method');
+const getPromise = (methods, ws) => request => {
+    const method = getAttr(request, 'method');
 
-    if (method === undefined || message.jsonrpc !== jsonrpc)
+    if (method === undefined || request.jsonrpc !== jsonrpc)
         return Promise.resolve(new Error('Invalid'));
     if (methods[method] === undefined)
         return Promise.resolve(new Error('Missing'));
 
-    return Promise.resolve(methods[method](getAttr(message, 'params'), ws))
-        .catch(e => e);
+    return Promise.resolve(methods[method](getAttr(request, 'params'), ws)).catch(e => e);
 };
 
-const buildMessage = (method, params) => ({ method, params, jsonrpc });
+function getRequests (data) {
+    try {
+        const messages = JSON.parse(data);
+        return (Array.isArray(messages) ? messages : [messages]);
+    } catch (e) {
+        return [];
+    }
+}
 
 const buildResponse = ids => results => {
     const response = [];
@@ -45,78 +47,103 @@ const buildResponse = ids => results => {
     return (response.length <= 1 ? response[0] : response);
 };
 
-const onMessage = methods => function (data) {
-    this.emit('rpc.message', data);
-
-    let messages;
-    try {
-        messages = JSON.parse(data);
-        if (!Array.isArray(messages)) messages = [messages];
-    } catch (e) {
-        return;
-    }
-
-    const ids = messages.map(message => getAttr(message, 'id') || null);
-    const promises = messages.map(getPromise(methods, this));
-
-    Promise.all(promises)
-        .then(buildResponse(ids))
-        .then(response => {
-            if (response) this.send(JSON.stringify(response));
-        })
-        .catch(e => { throw e; });
-};
+function onPong () {
+    this.isAlive = true;
+}
 
 function onClose () {
     this.emit('rpc.close');
-}
-
-function onListening () {
-    this.emit('rpc.listening');
 }
 
 function onError (error) {
     this.emit('rpc.error', error);
 }
 
-function notify (method, params, callback) {
-    const payload = JSON.stringify(this.buildMessage(method, params));
-    this.send(payload, callback);
+function onListening () {
+    this.emit('rpc.listening');
+}
+
+class Client extends EventEmitter {
+    constructor (methods, ws) {
+        super();
+
+        this.isAlive = true;
+        this.connection = ws;
+
+        this.connection.on('message', (data) => {
+            this.emit('rpc.message', data);
+
+            const requests = getRequests(data);
+            const ids = requests.map(request => getAttr(request, 'id') || null);
+            const promises = requests.map(getPromise(methods, this));
+
+            Promise.all(promises)
+                .then(buildResponse(ids))
+                .then(response => {
+                    if (response) this.connection.send(JSON.stringify(response));
+                })
+                .catch(e => { throw e; });
+        });
+
+        this.connection.on('pong', onPong.bind(this));
+        this.connection.on('close', onClose.bind(this));
+        this.connection.on('error', onError.bind(this));
+    }
+
+    get statusCode () {
+        return this.connection.statusCode;
+    }
+
+    close (code, data) {
+        this.connection.close(code, data);
+    }
+
+    buildMessage (method, params) {
+        return { method, params, jsonrpc };
+    }
+
+    send (method, params, callback) {
+        const payload = JSON.stringify(this.buildMessage(method, params));
+        this.connection.send(payload, callback);
+    }
 }
 
 class PassageServer extends EventEmitter {
     constructor (options = {}, callback) {
         super();
 
-        const heartrate = options.heartrate || 30000;
-        delete options.heartrate;
+        this.clients = new Set();
+
         const methods = options.methods || {};
         delete options.methods;
 
         this.socket = new WebSocket.Server(options, callback);
-        this.socket.on('listening', onListening.bind(this));
+
         this.socket.on('error', onError.bind(this));
+        this.socket.on('listening', onListening.bind(this));
+
         this.socket.on('connection', (ws, req) => {
-            ws.isAlive = true;
-            ws.buildMessage = buildMessage;
-            ws.notify = notify;
-            ws.on('pong', onPong);
-            ws.on('message', onMessage(methods));
-            ws.on('close', onClose);
-            ws.on('error', onError);
-            this.emit('rpc.connection', ws, req);
+            const client = new Client(methods, ws);
+            client.on('rpc.close', () => {
+                this.clients.delete(client);
+            });
+            this.clients.add(client);
+            this.emit('rpc.connection', client, req);
         });
 
-        this._interval = setInterval(() => {
-            for (const client of this.socket.clients) {
-                if (client.isAlive) {
-                    client.isAlive = false;
-                    client.ping('', false, true);
-                } else {
-                    client.terminate();
-                }
+        const heartrate = options.heartrate || 30000;
+        this._interval = setInterval(this.heartbeat.bind(this), heartrate);
+    }
+
+    heartbeat () {
+        for (const client of this.clients) {
+            if (client.isAlive) {
+                client.isAlive = false;
+                client.connection.ping('', false, true);
+            } else {
+                client.connection.terminate();
             }
-        }, heartrate);
+        }
     }
 
     close (callback) {

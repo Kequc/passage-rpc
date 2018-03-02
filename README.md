@@ -81,12 +81,12 @@ Maximum number of reconnection attempts.
 
 When the server sends a notification to your application, it triggers an event. You may choose to set a listener using `.on(method, callback)`. There are a few included events the client library provides.
 
-| method | description |
+| method | description | params |
 | - | - |
-| `rpc.message` | Message was received. |
-| `rpc.open` | Connection established. |
-| `rpc.close` | Connection closed. |
-| `rpc.error` | Error has occurred. |
+| `rpc.message` | Message was received. | data |
+| `rpc.open` | Connection established. | |
+| `rpc.close` | Connection closed. | |
+| `rpc.error` | Error has occurred. | Error |
 
 ## Instance
 
@@ -146,11 +146,11 @@ const options = {
     }
 };
 
-const wss = new Passage.Server(options, () => {
+const server = new Passage.Server(options, () => {
     console.log('Listening on port: ' + options.port);
 });
 
-wss.on('rpc.connection', () => {
+server.on('rpc.connection', () => {
     console.log('connected!');
 });
 ```
@@ -184,42 +184,42 @@ const methods = {
 
 Like the client, the server provides several events.
 
-| method | description |
+| method | description | params |
 | - | - |
-| `rpc.listening` | Server is listening. |
-| `rpc.connection` | Connection established. |
-| `rpc.error` | Error has occurred. |
+| `rpc.listening` | Server is listening. | |
+| `rpc.connection` | Connection established. | ConnectedClient, Req object |
+| `rpc.error` | Error has occurred. | Error |
 
-The `rpc.connection` event delivers the connected `WebSocket` instance, and a `req` object. The connected `WebSocket` instance also provides events.
+The `rpc.connection` event delivers a connected client instance, and a `req` object. The connected client also comes with events.
 
-| method | description |
+| method | description | params |
 | - | - |
-| `rpc.message` | Message was received. |
-| `rpc.close` | Connection closed. |
-| `rpc.error` | Error has occurred. |
+| `rpc.message` | Message was received. | data |
+| `rpc.close` | Connection closed. | |
+| `rpc.error` | Error has occurred. | Error |
 
-## Ws Instance
+## ConnectedClient
 
-#### notify(method: string, params?: any) => void
+#### send (method: string, params?: any) => void
 
 Send a notification to the connected client.
 
-## Sending more than one notification at the same time
+## Sending more than one notification at a time
 
-Sending multiple messages at once must be done manually, a full example from the server can be seen below.
+Sending multiple notifications at once must be done manually, a full example from the server can be seen below.
 
 ```javascript
 const messages = [
-    ws.buildMessage('myapp.notify'),
-    ws.buildMessage('myapp.notify', { a: 'message' }),
+    client.buildMessage('myapp.notify'),
+    client.buildMessage('myapp.notify', { a: 'message' }),
 ];
 const payload = JSON.stringify(messages);
-ws.send(payload);
+client.connection.send(payload);
 ```
 
 #### buildMessage (method: string, [params: any]) => Object
 
-This creates a simple object for consumption by the client. It takes the same values as the `notify` method, however does not stringify or send the message. You then use this in conjunction with the raw `send` method to deliver the messages.
+This creates a simple object for consumption by the client. It takes the same values as the `send` method, however does not stringify or send the message. You then use this in conjunction with the raw `send` method for delivery.
 
 ## Example
 
@@ -237,15 +237,15 @@ const methods = {
     }
 };
 
-const wss = new Passage.Server({ port, methods });
+const server = new Passage.Server({ port, methods });
 
-wss.on('rpc.listening', () => {
+server.on('rpc.listening', () => {
     console.log('Server listening on port: ' + port);
 });
 
-wss.on('rpc.connection', (ws) => {
+server.on('rpc.connection', (client) => {
     setTimeout(() => {
-        ws.notify('myapp.hi', { message: 'Connected 10 seconds ago.' });
+        client.send('myapp.hi', { message: 'Connected 10 seconds ago.' });
     }, 10000);
 });
 ```
@@ -255,15 +255,15 @@ Client
 ```javascript
 const Passage = require('passage-rpc');
 
-const ws = new Passage('ws://localhost:8080');
+const passage = new Passage('ws://localhost:8080');
 
 function processResponse (err, response) {
     if (err) throw err;
     console.log(`Returned ${response.cats.length} cat(s).`);
 }
 
-ws.on('myapp.hi', (params) => {
+passage.on('myapp.hi', (params) => {
     console.log(params.message);
-    ws.send('myapp.cats.list', processResponse);
+    passage.send('myapp.cats.list', processResponse);
 });
 ```
