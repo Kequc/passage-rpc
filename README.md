@@ -225,14 +225,14 @@ This creates a simple object for consumption by the client. It takes the same va
 
 ## Example
 
-A simple example of a client and server working together.
+Server
 
 ```javascript
-// server
 const Passage = require('passage-rpc');
-const Cat = require('../models/cat');
 
+const Cat = require('../models/cat');
 const PORT = 8080;
+
 const methods = {
     'myapp.cats.list': async () => {
         const cats = await Cat.list();
@@ -244,7 +244,7 @@ const wss = new Passage.Server({ port: PORT, methods });
 
 wss.on('rpc.connection', (ws) => {
     setTimeout(() => {
-        ws.send('myapp.hi', { message: 'You have been connected 10 seconds.' });
+        ws.notify('myapp.hi', { message: 'You have been connected 10 seconds.' });
     }, 10000);
 });
 
@@ -254,18 +254,12 @@ wss.on('rpc.listening', () => {
 
 ```
 
+Client
+
 ```javascript
-// client
 const Passage = require('passage-rpc');
 
 const ws = new Passage('ws://localhost:8080');
-
-function listCats (callback) {
-    ws.send('myapp.cats.list', (err, response) => {
-        if (err) throw err;
-        callback(response.cats);
-    });
-}
 
 ws.on('myapp.hi', (params) => {
     console.log(params.message);
