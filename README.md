@@ -222,7 +222,7 @@ const payload = JSON.stringify(messages);
 client.connection.send(payload);
 ```
 
-#### buildMessage (method: string, [params: any]) => Object
+#### buildMessage (method: string, params?: any) => Object
 
 This creates a simple object for consumption by the client. It takes the same values as the `send` method, however does not stringify or send the message. You then use this in conjunction with the raw `send` method for delivery.
 
