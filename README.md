@@ -136,6 +136,8 @@ Returns a number representing a message id. The callback will timeout if a respo
 The server implementation is built on the [npm ws](https://github.com/websockets/ws) library and shares several similarities. There are a few additional options and events utilised for JSON-RPC. The second parameter is an alias for the `rpc.listening` event.
 
 ```javascript
+const Passage = require('passage-rpc');
+
 const options = {
     port: 8000,
     heartrate: 30000,
@@ -196,7 +198,7 @@ The `rpc.connection` event delivers the connected `WebSocket` instance, and a `r
 | `rpc.close` | Connection closed. |
 | `rpc.error` | Error has occurred. |
 
-## WebSocket Instance
+## Ws Instance
 
 #### notify(method: string, params?: any) => void
 
@@ -207,16 +209,12 @@ Send a notification to the connected client.
 Sending multiple messages at once must be done manually, a full example from the server can be seen below.
 
 ```javascript
-const wss = new Passage.Server();
-
-wss.on('rpc.connection', (ws) => {
-    const messages = [
-        ws.buildMessage('myapp.notify'),
-        ws.buildMessage('myapp.notify', { a: 'message' }),
-    ];
-    const payload = JSON.stringify(messages);
-    ws.send(payload);
-});
+const messages = [
+    ws.buildMessage('myapp.notify'),
+    ws.buildMessage('myapp.notify', { a: 'message' }),
+];
+const payload = JSON.stringify(messages);
+ws.send(payload);
 ```
 
 #### buildMessage (method: string, [params: any]) => Object
@@ -229,29 +227,27 @@ Server
 
 ```javascript
 const Passage = require('passage-rpc');
+const MyCat = require('../models/my-cat');
 
-const Cat = require('../models/cat');
-const PORT = 8080;
-
+const port = 8080;
 const methods = {
     'myapp.cats.list': async () => {
-        const cats = await Cat.list();
+        const cats = await MyCat.list();
         return { cats };
     }
 };
 
-const wss = new Passage.Server({ port: PORT, methods });
+const wss = new Passage.Server({ port, methods });
+
+wss.on('rpc.listening', () => {
+    console.log('Server listening on port: ' + port);
+});
 
 wss.on('rpc.connection', (ws) => {
     setTimeout(() => {
-        ws.notify('myapp.hi', { message: 'You have been connected 10 seconds.' });
+        ws.notify('myapp.hi', { message: 'Connected 10 seconds ago.' });
     }, 10000);
 });
-
-wss.on('rpc.listening', () => {
-    console.log('Server listening on port: ' + PORT);
-});
-
 ```
 
 Client
@@ -261,12 +257,13 @@ const Passage = require('passage-rpc');
 
 const ws = new Passage('ws://localhost:8080');
 
+function processResponse (err, response) {
+    if (err) throw err;
+    console.log(`Returned ${response.cats.length} cat(s).`);
+}
+
 ws.on('myapp.hi', (params) => {
     console.log(params.message);
-
-    ws.send('myapp.cats.list', (err, response) => {
-        if (err) throw err;
-        console.log(`Returned ${response.cats.length} cat(s).`);
-    });
+    ws.send('myapp.cats.list', processResponse);
 });
 ```
