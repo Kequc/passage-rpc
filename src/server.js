@@ -63,7 +63,7 @@ function onListening () {
     this.emit('rpc.listening');
 }
 
-class Client extends EventEmitter {
+class ConnectedClient extends EventEmitter {
     constructor (methods, ws) {
         super();
 
@@ -123,7 +123,7 @@ class PassageServer extends EventEmitter {
         this.socket.on('listening', onListening.bind(this));
 
         this.socket.on('connection', (ws, req) => {
-            const client = new Client(methods, ws);
+            const client = new ConnectedClient(methods, ws);
             client.on('rpc.close', () => {
                 this.clients.delete(client);
             });

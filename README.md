@@ -102,7 +102,7 @@ This will close the connection, then reconnect.
 
 Send a request to the server. If a callback is provided, then the server will respond once it has finished processing. It may return an error or a result once completed but not both. Params will be available for consumption on the server. If a timeout  is provided it will override the default `requestTimeout` from options.
 
-## Sending more than one message at the same time
+## Sending more than one request at the same time
 
 JSON-RPC supports sending an array of messages. To do this the library exposes helper methods for you to use. A full example sending multiple messages can be seen below.
 
@@ -114,8 +114,8 @@ passage.on('rpc.open', () => {
         console.log(result);
     };
     const messages = [
-        passage.buildMessage('myapp.notify', callback),
-        passage.buildMessage('myapp.notify', { code: 'the stork swims at midnight' }),
+        passage.buildMessage('myapp.request', callback),
+        passage.buildMessage('myapp.request', { code: 'the stork swims at midnight' }),
         passage.buildMessage('myapp.alert', 'important message')
     ];
     const payload = JSON.stringify(messages);
@@ -190,15 +190,15 @@ Like the client, the server provides several events.
 | `rpc.connection` | Connection established. | ConnectedClient, Req object |
 | `rpc.error` | Error has occurred. | Error |
 
-The `rpc.connection` event delivers a connected client instance, and a `req` object. The connected client also comes with events.
+## ConnectedClient
+
+The `rpc.connection` event delivers a connected client instance, and a `req` object. The connected client also has events.
 
 | method | description | params |
 | - | - | - |
 | `rpc.message` | Message was received. | data |
 | `rpc.close` | Connection closed. | |
 | `rpc.error` | Error has occurred. | Error |
-
-## ConnectedClient
 
 #### send (method: string, params?: any) => void
 
@@ -211,7 +211,8 @@ Sending multiple notifications at once must be done manually, a full example fro
 ```javascript
 const messages = [
     client.buildMessage('myapp.notify'),
-    client.buildMessage('myapp.notify', { a: 'message' }),
+    client.buildMessage('myapp.notify', { friends: 'forevah' }),
+    client.buildMessage('myapp.alert'),
 ];
 const payload = JSON.stringify(messages);
 client.connection.send(payload);
@@ -227,12 +228,11 @@ Server
 
 ```javascript
 const Passage = require('passage-rpc');
-const MyCat = require('../models/my-cat');
 
 const port = 8080;
 const methods = {
     'myapp.cats.list': async () => {
-        const cats = await MyCat.list();
+        const cats = await getCats();
         return { cats };
     }
 };

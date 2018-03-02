@@ -35,8 +35,8 @@ describe('client-server', () => {
             });
         });
     });
-    it('client should send a notification', done => {
-        const method = 'myapp.notification';
+    it('client should send a request', done => {
+        const method = 'myapp.request';
         const methods = { [method]: (result) => {
             expect(result).to.be(undefined);
             done();
@@ -47,8 +47,8 @@ describe('client-server', () => {
             });
         });
     });
-    it('client should send a notification with params', done => {
-        const method = 'myapp.notification';
+    it('client should send a request with params', done => {
+        const method = 'myapp.request';
         const params = { hi: 'there' };
         const methods = { [method]: (result) => {
             expect(result).to.eql(params);
@@ -57,6 +57,35 @@ describe('client-server', () => {
         buildServer(methods, () => {
             client.on('rpc.open', () => {
                 client.send(method, params);
+            });
+        });
+    });
+    it('client should send multiple requests with params', done => {
+        const method1 = 'myapp.request';
+        const method2 = 'myapp.alert';
+        const params1 = { test: 'data' };
+        let count1 = 0;
+        let count2 = 0;
+        const methods = {
+            [method1]: () => { count1++; return params1; },
+            [method2]: () => { count2++; }
+        };
+        const callback = (error, result) => {
+            expect(error).to.be(undefined);
+            expect(result).to.eql(params1);
+            expect(count1).to.equal(2);
+            expect(count2).to.equal(1);
+            done();
+        };
+        buildServer(methods, () => {
+            client.on('rpc.open', () => {
+                const messages = [
+                    client.buildMessage(method1, callback),
+                    client.buildMessage(method1, { code: 'the stork swims at midnight' }),
+                    client.buildMessage(method2, 'important message')
+                ];
+                const payload = JSON.stringify(messages);
+                client.connection.send(payload);
             });
         });
     });
@@ -82,6 +111,34 @@ describe('client-server', () => {
             });
             server.on('rpc.connection', (ws) => {
                 ws.send(method, params);
+            });
+        });
+    });
+    it('server should send multiple notifications with params', done => {
+        const method1 = 'myapp.notify';
+        const method2 = 'myapp.alert';
+        const params2 = { a: 'message' };
+        let count1 = 0;
+        let count2 = 0;
+        buildServer(() => {
+            client.on(method1, (result) => {
+                count1++;
+                expect(result).to.be(undefined);
+                if (count1 === 2 && count2 === 1) done();
+            });
+            client.on(method2, (result) => {
+                count2++;
+                expect(result).to.eql(params2);
+                if (count1 === 2 && count2 === 1) done();
+            });
+            server.on('rpc.connection', (ws) => {
+                const messages = [
+                    ws.buildMessage(method1),
+                    ws.buildMessage(method2, params2),
+                    ws.buildMessage(method1)
+                ];
+                const payload = JSON.stringify(messages);
+                ws.connection.send(payload);
             });
         });
     });
