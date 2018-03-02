@@ -222,3 +222,57 @@ wss.on('rpc.connection', (ws) => {
 #### buildMessage (method: string, [params: any]) => Object
 
 This creates a simple object for consumption by the client. It takes the same values as the `notify` method, however does not stringify or send the message. You then use this in conjunction with the raw `send` method to deliver the messages.
+
+## Example
+
+A simple example of a client and server working together.
+
+```javascript
+// server
+const Passage = require('passage-rpc');
+const Cat = require('../models/cat');
+
+const PORT = 8080;
+const methods = {
+    'myapp.cats.list': async () => {
+        const cats = await Cat.list();
+        return { cats };
+    }
+};
+
+const wss = new Passage.Server({ port: PORT, methods });
+
+wss.on('rpc.connection', (ws) => {
+    setTimeout(() => {
+        ws.send('myapp.hi', { message: 'You have been connected 10 seconds.' });
+    }, 10000);
+});
+
+wss.on('rpc.listening', () => {
+    console.log('Server listening on port: ' + PORT);
+});
+
+```
+
+```javascript
+// client
+const Passage = require('passage-rpc');
+
+const ws = new Passage('ws://localhost:8080');
+
+function listCats (callback) {
+    ws.send('myapp.cats.list', (err, response) => {
+        if (err) throw err;
+        callback(response.cats);
+    });
+}
+
+ws.on('myapp.hi', (params) => {
+    console.log(params.message);
+
+    ws.send('myapp.cats.list', (err, response) => {
+        if (err) throw err;
+        console.log(`Returned ${response.cats.length} cat(s).`);
+    });
+});
+```
