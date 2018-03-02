@@ -204,6 +204,10 @@ The `rpc.connection` event delivers a connected client instance, and a `req` obj
 
 Send a notification to the connected client.
 
+#### close (callback?: Function) => void
+
+Closes the client connection and runs the callback.
+
 ## Sending more than one notification at a time
 
 Sending multiple notifications at once must be done manually, a full example from the server can be seen below.

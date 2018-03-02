@@ -108,6 +108,17 @@ class ConnectedClient extends EventEmitter {
     }
 }
 
+function heartbeat () {
+    for (const client of this.clients) {
+        if (client.isAlive) {
+            client.isAlive = false;
+            client.connection.ping('', false, true);
+        } else {
+            client.connection.terminate();
+        }
+    }
+}
+
 class PassageServer extends EventEmitter {
     constructor (options = {}, callback) {
         super();
@@ -132,27 +143,12 @@ class PassageServer extends EventEmitter {
         });
 
         const heartrate = options.heartrate || 30000;
-        this._interval = setInterval(this.heartbeat.bind(this), heartrate);
-    }
-
-    heartbeat () {
-        for (const client of this.clients) {
-            if (client.isAlive) {
-                client.isAlive = false;
-                client.connection.ping('', false, true);
-            } else {
-                client.connection.terminate();
-            }
-        }
+        this._interval = setInterval(heartbeat.bind(this), heartrate);
     }
 
     close (callback) {
         clearInterval(this._interval);
-        try {
-            this.socket.close(callback);
-        } catch (e) {
-            if (callback) callback();
-        }
+        this.socket.close(callback);
     }
 }
 
