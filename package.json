@@ -11,19 +11,20 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Kequc/passage-node.git"
+    "url": "git+https://github.com/Kequc/passage-rpc.git"
   },
   "keywords": [
     "websocket",
     "ws",
-    "json-rpc"
+    "json-rpc",
+    "jsonrpc"
   ],
   "author": "Nathan Lunde-Berry",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Kequc/passage-node/issues"
+    "url": "https://github.com/Kequc/passage-rpc/issues"
   },
-  "homepage": "https://github.com/Kequc/passage-node#readme",
+  "homepage": "https://github.com/Kequc/passage-rpc#readme",
   "devDependencies": {
     "eslint": "^4.16.0",
     "eventemitter3": "^3.0.1",

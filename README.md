@@ -1,6 +1,6 @@
 # Passage RPC
 
-#### Client and server side JSON-RPC 2.0 websockets library
+#### Client and server side JSON-RPC 2.0 websockets
 
 This is a websocket subprotocol implementation designed for remote procedure calls and server responses.
 
