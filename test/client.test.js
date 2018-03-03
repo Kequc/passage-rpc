@@ -182,9 +182,9 @@ describe('client', () => {
                 });
             });
             client.on('rpc.open', () => {
-                client.send(method, (error, result) => {
+                client.send(method, (error, response) => {
                     expect(error).to.be(undefined);
-                    expect(result).to.be(undefined);
+                    expect(response).to.be(undefined);
                     done();
                 });
             });
@@ -198,9 +198,9 @@ describe('client', () => {
                 });
             });
             client.on('rpc.open', () => {
-                client.send(method, (error, result) => {
+                client.send(method, (error, response) => {
                     expect(error).to.be(undefined);
-                    expect(result).to.eql(expected);
+                    expect(response).to.eql(expected);
                     done();
                 });
             });
@@ -233,23 +233,23 @@ describe('client', () => {
                 });
             });
             client.on('rpc.open', () => {
-                client.send(method, (error, result) => {
+                client.send(method, (error, response) => {
                     expect(error).to.be.an(Error);
                     expect(error.message).to.equal(error.message);
                     expect(error.code).to.equal(error.code);
                     expect(error.data).to.eql(error.data);
-                    expect(result).to.be(undefined);
+                    expect(response).to.be(undefined);
                     done();
                 });
             });
         });
         it('should timeout on no response', done => {
             client.on('rpc.open', () => {
-                client.send(method, (error, result) => {
+                client.send(method, (error, response) => {
                     expect(error).to.be.an(Error);
                     expect(error.name).to.equal('Timeout');
                     expect(error.code).to.equal(408);
-                    expect(result).to.be(undefined);
+                    expect(response).to.be(undefined);
                     done();
                 }, 0); // timeout set to 0 for faster test
             });
@@ -271,8 +271,8 @@ describe('client', () => {
             expect(id).to.be(undefined);
         });
         it('should expect a response', done => {
-            const callback = (err) => {
-                expect(err).to.be.a(Error);
+            const callback = (error) => {
+                expect(error).to.be.a(Error);
                 done();
             };
             const id = client.expectResponse(callback);
@@ -283,20 +283,20 @@ describe('client', () => {
             expect(client.buildMessage(method, params)).to.eql(expected);
         });
         it('should build a message that sets a callback', done => {
-            const callback = (err) => {
-                expect(err).to.be.a(Error);
+            const callback = (error) => {
+                expect(error).to.be.a(Error);
                 done();
             };
             const expected = { id: 1, method, params, jsonrpc };
             expect(client.buildMessage(method, params, callback)).to.eql(expected);
         });
         it('should increment id', done => {
-            const callback2 = (err) => {
-                expect(err).to.be.a(Error);
+            const callback2 = (error) => {
+                expect(error).to.be.a(Error);
                 done();
             };
-            const callback1 = (err) => {
-                expect(err).to.be.a(Error);
+            const callback1 = (error) => {
+                expect(error).to.be.a(Error);
                 expect(client.buildMessage(method, params, callback2).id).to.equal(2);
             };
             expect(client.buildMessage(method, params, callback1).id).to.equal(1);
@@ -321,11 +321,11 @@ describe('client', () => {
                 method2: 'some text'
             };
             let count = 0;
-            client.on('method1', received => {
+            client.on('method1', (received) => {
                 count++; result.method1 = received;
                 if (count === 2) finish();
             });
-            client.on('method2', received => {
+            client.on('method2', (received) => {
                 count++; result.method2 = received;
                 if (count === 2) finish();
             });

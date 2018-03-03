@@ -15,13 +15,13 @@ class Parser {
         }
     }
 
-    error () {
-        if (!this.parsed) return err.parseError();
-        if (this.parsed.length < 1) return err.invalidRequest();
-    }
-
     get isArray () {
         return Array.isArray(this.parsed);
+    }
+
+    error () {
+        if (!this.parsed) return err.parseError();
+        if (this.isArray && this.parsed.length < 1) return err.invalidRequest();
     }
 
     get requests () {

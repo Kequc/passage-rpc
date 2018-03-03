@@ -85,8 +85,8 @@ module.exports = (WebSocket) => {
             this.connect();
         }
 
-        get statusCode () {
-            return this.connection.statusCode;
+        get readyState () {
+            return this.connection.readyState;
         }
 
         close () {
@@ -131,11 +131,11 @@ module.exports = (WebSocket) => {
         }
 
         send (method, params, callback, timeout) {
-            if (this.connection.readyState !== PassageClient.OPEN) {
-                const err = err.serviceUnavailable({ info: 'Connection not available.' });
+            if (this.readyState !== 1) {
+                const error = err.serviceUnavailable({ info: 'Connection not available.' });
                 if (typeof params === 'function') callback = params;
-                if (typeof callback !== 'function') throw err;
-                callback(err);
+                if (typeof callback !== 'function') throw error;
+                callback(error);
                 return;
             }
             const payload = JSON.stringify(this.buildMessage(method, params, callback, timeout));

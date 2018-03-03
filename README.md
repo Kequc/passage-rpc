@@ -34,7 +34,7 @@ Download and include the library onto your page, a minified version can be found
 <script src="/javascripts/passage-rpc.min.js"></script>
 ```
 
-## Client usage
+## Setup
 
 Create a new instance of `Passage` providing a uri and set of options.
 
@@ -48,14 +48,6 @@ const passage = new Passage('wss://example.com', {
 
 passage.on('rpc.open', () => {
     console.log('connected!');
-});
-
-passage.on('myapp.newuser', (params) => {
-    console.log(params);
-});
-
-passage.send('myapp.hello', (err, response) => {
-    console.log(response);
 });
 ```
 
@@ -79,7 +71,7 @@ Maximum number of reconnection attempts.
 
 ## Events
 
-When the server sends a notification to your application, it triggers an event. This library uses node's [EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter) therefore you may choose to set a listener using `.on(method, callback)` as in the example above. There are a few included events the client library provides.
+When the server sends a notification to your application, it triggers an event. This library uses node's [EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter).
 
 | method | description | params |
 | - | - | - |
@@ -98,29 +90,60 @@ Closes the connection.
 
 This will close the connection, then reconnect.
 
+#### readyState
+
+The ready state of the connection, useful to compare against named ready states on the contructor.
+
+| name | value | location |
+| - | - | - |
+| CONNECTING | 0 | `Passage.CONNECTING` |
+| OPEN | 1 | `Passage.OPEN` |
+| CLOSING | 2 | `Passage.CLOSING` |
+| CLOSED | 3 | `Passage.CLOSED` |
+
+```javascript
+if (passage.readyState !== Passage.OPEN) {
+    console.log('Not connected');
+}
+```
+
 #### send (method: string, [params: any], callback?: (error: Error, result?: any) => void, timeout?: number) => void
 
-Send a request to the server. If a callback is provided, then the server will respond once it has finished processing. It may return an error or a result once completed but not both. Params will be available for consumption on the server. If a timeout  is provided it will override the default `requestTimeout` from options.
+If a callback is provided, then the server will respond once it has finished processing. It may return an error or a result once completed but not both. Params will be available for consumption on the server. If a timeout  is provided it will override the default `requestTimeout` from options.
+
+```javascript
+passage.send('myapp.hello');
+
+passage.send('myapp.hello', (error, response) => {
+    if (error) throw error;
+    console.log(response);
+});
+
+passage.send('myapp.hello', { my: 'params' });
+
+passage.send('myapp.hello', { my: 'params' }, (error, response) => {
+    if (error) throw error;
+    console.log(response);
+});
+```
+
+Note: If a callback is not provided and the connection is not available. This method will throw an error.
 
 ## Sending more than one request at the same time
 
 JSON-RPC supports sending an array of messages. To do this the library exposes helper methods for you to use. A full example sending multiple messages can be seen below.
 
 ```javascript
-const passage = new Passage('wss://example.com');
-
-passage.on('rpc.open', () => {
-    const callback = (error, result) => {
-        console.log(result);
-    };
-    const messages = [
-        passage.buildMessage('myapp.request', callback),
-        passage.buildMessage('myapp.request', { code: 'the stork swims at midnight' }),
-        passage.buildMessage('myapp.alert', 'important message')
-    ];
-    const payload = JSON.stringify(messages);
-    passage.connection.send(payload);
-});
+const callback = (error, result) => {
+    console.log(result);
+};
+const messages = [
+    passage.buildMessage('myapp.request', callback),
+    passage.buildMessage('myapp.request', { code: 'the stork swims at midnight' }),
+    passage.buildMessage('myapp.alert', 'important message')
+];
+const payload = JSON.stringify(messages);
+passage.connection.send(payload);
 ```
 
 #### buildMessage (method: string, [params: any], callback?: (error: Error, result?: any) => void, timeout?: number) => Object
@@ -129,29 +152,30 @@ This creates a simple object for consumption by the server. It takes the same va
 
 #### expectResponse (callback: (error: Error, result?: any) => void, timeout?: number) => number
 
-Returns a number representing a message id. The callback will timeout if a response containing the message id is not received in time. You may only need to use this if you need to have full control over message parameters.
+Returns a number representing a message id. The callback will timeout if a response containing the message id is not received in time. You may only need to use this to have full control over message parameters.
 
-## Server usage
+## Server setup
 
-The server implementation is built on the [npm ws](https://github.com/websockets/ws) library and shares several similarities. There are a few additional options and events utilised for JSON-RPC. The second parameter is an alias for the `rpc.listening` event.
+The server implementation is built on the [npm ws](https://github.com/websockets/ws) library and shares several similarities. There are a few additional options and events utilised for JSON-RPC.
 
 ```javascript
 const Passage = require('passage-rpc');
 
-const options = {
-    port: 8000,
-    heartrate: 30000,
-    methods: {
-        'myapp.hello': () => 'hi';
-    }
-};
+const port = 8000;
+const heartrate = 30000;
+const methods = {
+    'myapp.hello': () => 'hi';
+}
 
-const server = new Passage.Server(options, () => {
-    console.log('Listening on port: ' + options.port);
+const server = new Passage.Server({ port, heartrate, methods });
+
+server.on('rpc.connection', (client) => {
+    console.log('connected!');
+    client.send('myapp.welcome');
 });
 
-server.on('rpc.connection', () => {
-    console.log('connected!');
+server.on('rpc.listening', () => {
+    console.log('Listening on port: ' + port);
 });
 ```
 
@@ -180,9 +204,9 @@ const methods = {
 };
 ```
 
-## Events
+## Server events
 
-Like the client, the server provides several events.
+Events on the server are handled differently than on the client in most cases, but there are important ones.
 
 | method | description | params |
 | - | - | - |
@@ -190,9 +214,19 @@ Like the client, the server provides several events.
 | `rpc.connection` | Connection established. | ConnectedClient, Req object |
 | `rpc.error` | Error has occurred. | Error |
 
-## ConnectedClient
+## Server instance
 
-Methods are run including a connected client instance. The `rpc.connection` event offers a connected client instance, and a `req` object. The connected client has events.
+#### close (callback?: Function) => void
+
+Closes the server then runs the callback.
+
+#### clients
+
+Set of connected clients.
+
+## ConnectedClient instance
+
+The `rpc.connection` event offers a connected client instance, and a `req` object. The connected client has events.
 
 | method | description | params |
 | - | - | - |
@@ -200,17 +234,37 @@ Methods are run including a connected client instance. The `rpc.connection` even
 | `rpc.close` | Connection closed. | |
 | `rpc.error` | Error has occurred. | Error |
 
-#### send (method: string, params?: any) => void
+#### close (callback?: Function) => void
+
+Closes the connection then runs the callback.
+
+#### readyState
+
+The ready state of the connection.
+
+#### send (method: string, [params: any], callback?: (error: Error) => void) => void
 
 Send a notification to the connected client.
 
-#### close (callback?: Function) => void
+```javascript
+client.send('myapp.welcome');
 
-Closes the client connection then runs the callback.
+client.send('myapp.welcome', { my: 'params' });
 
-## Sending more than one notification at a time
+client.send('myapp.welcome', (error) => {
+    if (!error) console.log('Notification sent');
+});
 
-Sending multiple notifications at once must be done manually, a full example from the server can be seen below.
+client.send('myapp.welcome', { my: 'params' }, (error) => {
+    if (!error) console.log('Notification sent');
+});
+```
+
+Note: If a callback is not provided and the connection is not available. This method will throw an error.
+
+## Sending more than one notification at the same time
+
+This again must be done manually, a full example from the server can be seen below.
 
 ```javascript
 const messages = [
@@ -225,6 +279,20 @@ client.connection.send(payload);
 #### buildMessage (method: string, params?: any) => Object
 
 This creates a simple object for consumption by the client. It takes the same values as the `send` method, however does not stringify or send the message.
+
+## Errors
+
+When returning an error from the server the following fields are delivered across the network, `message` `name` `code` `data`. The data field can be any additional information you would like to include, but must be stringifiable into JSON.
+
+There are some errors the library may return itself.
+
+| name | code | message |
+| - | - | - |
+| `Timeout` | 408 | Timeout |
+| `ServiceUnavailable` | 503 | Service unavailable |
+| `ParseError` | -32700 | Parse error |
+| `InvalidRequest` | -32600 | Invalid request |
+| `MethodNotFound` | -32601 | Method not found |
 
 ## Example
 
@@ -261,8 +329,8 @@ const Passage = require('passage-rpc');
 
 const passage = new Passage('ws://localhost:8080');
 
-function processResponse (err, response) {
-    if (err) throw err;
+function processResponse (error, response) {
+    if (error) throw error;
     console.log(`Returned ${response.cats.length} cat(s).`);
 }
 
@@ -271,17 +339,3 @@ passage.on('myapp.hi', (params) => {
     passage.send('myapp.cats.list', processResponse);
 });
 ```
-
-## Errors
-
-When you return an error from the server the following error fields are delivered across the network, `message` `name` `code` `data`. The data field can be any additional information you would like to include, but must be stringifiable into JSON.
-
-There are some errors the library itself returns:
-
-| name | code | message |
-| - | - | - |
-| `Timeout` | 408 | Timeout |
-| `ServiceUnavailable` | 503 | Service unavailable |
-| `ParseError` | -32700 | Parse error |
-| `InvalidRequest` | -32600 | Invalid request |
-| `MethodNotFound` | -32601 | Method not found |

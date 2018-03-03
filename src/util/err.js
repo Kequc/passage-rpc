@@ -8,11 +8,11 @@ err.build = (params) => {
     return error;
 };
 
-err.toJSON = (err) => ({
-    message: err.message,
-    name: err.name,
-    code: err.code,
-    data: err.data
+err.toJSON = (error) => ({
+    message: error.message,
+    name: error.name,
+    code: error.code,
+    data: error.data
 });
 
 // Timeout

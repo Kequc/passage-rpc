@@ -1,5 +1,6 @@
 const EventEmitter = require('events');
 const buildResponse = require('./util/build-response');
+const err = require('./util/err');
 const jsonrpc = require('./version');
 
 const onMessage = methods => function (data) {
@@ -37,8 +38,8 @@ class ConnectedClient extends EventEmitter {
         this.connection.on('error', onError.bind(this));
     }
 
-    get statusCode () {
-        return this.connection.statusCode;
+    get readyState () {
+        return this.connection.readyState;
     }
 
     close (code, data) {
@@ -50,6 +51,16 @@ class ConnectedClient extends EventEmitter {
     }
 
     send (method, params, callback) {
+        if (typeof params === 'function') {
+            callback = params;
+            params = undefined;
+        }
+        if (this.readyState !== 1) {
+            const error = err.serviceUnavailable({ info: 'Connection not available.' });
+            if (typeof callback !== 'function') throw error;
+            callback(error);
+            return;
+        }
         const payload = JSON.stringify(this.buildMessage(method, params));
         this.connection.send(payload, callback);
     }
