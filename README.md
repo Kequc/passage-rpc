@@ -71,7 +71,7 @@ Maximum number of reconnection attempts.
 
 ## Events
 
-When the server sends a notification to your application, it triggers an event. This library uses node's [EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter).
+When the server sends a notification to your application, it triggers an event. This library uses node's [EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter) therefore events can be listened for in a common way.
 
 | method | description | params |
 | - | - | - |
@@ -79,6 +79,12 @@ When the server sends a notification to your application, it triggers an event. 
 | `rpc.open` | Connection established. | |
 | `rpc.close` | Connection closed. | |
 | `rpc.error` | Error has occurred. | Error |
+
+```javascript
+passage.on('myapp.welcome', (params) => {
+    console.log(params);
+})
+```
 
 ## Instance
 
@@ -92,7 +98,7 @@ This will close the connection, then reconnect.
 
 #### readyState
 
-The ready state of the connection, useful to compare against named ready states on the contructor.
+The ready state of the connection, useful to compare against named ready states available on the contructor.
 
 | name | value | location |
 | - | - | - |
@@ -127,21 +133,23 @@ passage.send('myapp.hello', { my: 'params' }, (error, response) => {
 });
 ```
 
-Note: If a callback is not provided and the connection is not available. This method will throw an error.
+Note: If a callback is not provided and the connection is not available this method will throw an error.
 
 ## Sending more than one request at the same time
 
 JSON-RPC supports sending an array of messages. To do this the library exposes helper methods for you to use. A full example sending multiple messages can be seen below.
 
 ```javascript
-const callback = (error, result) => {
-    console.log(result);
+const callback = (error, response) => {
+    console.log(response);
 };
+
 const messages = [
     passage.buildMessage('myapp.request', callback),
     passage.buildMessage('myapp.request', { code: 'the stork swims at midnight' }),
     passage.buildMessage('myapp.alert', 'important message')
 ];
+
 const payload = JSON.stringify(messages);
 passage.connection.send(payload);
 ```
@@ -152,11 +160,11 @@ This creates a simple object for consumption by the server. It takes the same va
 
 #### expectResponse (callback: (error: Error, result?: any) => void, timeout?: number) => number
 
-Returns a number representing a message id. The callback will timeout if a response containing the message id is not received in time. You may only need to use this to have full control over message parameters.
+Returns a number representing a message id. The callback will timeout if a response containing the message id is not received in time.
 
 ## Server setup
 
-The server implementation is built on the [npm ws](https://github.com/websockets/ws) library and shares several similarities. There are a few additional options and events utilised for JSON-RPC.
+The server implementation is built on the [npm ws](https://github.com/websockets/ws) library and shares several similarities with it. There are a few additional options and events utilised for JSON-RPC.
 
 ```javascript
 const Passage = require('passage-rpc');
@@ -165,13 +173,13 @@ const port = 8000;
 const heartrate = 30000;
 const methods = {
     'myapp.hello': () => 'hi';
-}
+};
 
 const server = new Passage.Server({ port, heartrate, methods });
 
 server.on('rpc.connection', (client) => {
     console.log('connected!');
-    client.send('myapp.welcome');
+    client.send('myapp.welcome', { hi: 'there' });
 });
 
 server.on('rpc.listening', () => {
@@ -181,7 +189,7 @@ server.on('rpc.listening', () => {
 
 #### heartrate <default: 30000>
 
-Periodically each of the connected clients will be pinged and terminate ones for which there is no response. Checking every 30 seconds is a good default but you might wish to adjust this.
+Periodically each of the connected clients will be pinged terminating ones for which there is no response. Checking every 30 seconds is a good default but you might wish to adjust this.
 
 #### methods <default: {}>
 
@@ -191,7 +199,7 @@ Whether the server responds is dependent on the client. If the client is not wai
 
 `(params: any, client: ConnectedClient) => any`
 
-You must return a `Promise` if you are doing something which is asyncronous.
+Must return a `Promise` if you are doing something which is asyncronous.
 
 For example:
 
@@ -211,12 +219,12 @@ Events on the server are handled differently than on the client in most cases, b
 | method | description | params |
 | - | - | - |
 | `rpc.listening` | Server is listening. | |
-| `rpc.connection` | Connection established. | ConnectedClient, Req object |
+| `rpc.connection` | Connection established. | ConnectedClient, req object |
 | `rpc.error` | Error has occurred. | Error |
 
 ## Server instance
 
-#### close (callback?: Function) => void
+#### close (callback?: () => void) => void
 
 Closes the server then runs the callback.
 
@@ -226,7 +234,7 @@ Set of connected clients.
 
 ## ConnectedClient instance
 
-The `rpc.connection` event offers a connected client instance, and a `req` object. The connected client has events.
+The `rpc.connection` event offers a connected client instance, and a `req` object. The connected client has its own events separate from the server.
 
 | method | description | params |
 | - | - | - |
@@ -234,7 +242,7 @@ The `rpc.connection` event offers a connected client instance, and a `req` objec
 | `rpc.close` | Connection closed. | |
 | `rpc.error` | Error has occurred. | Error |
 
-#### close (callback?: Function) => void
+#### close (callback?: () => void) => void
 
 Closes the connection then runs the callback.
 
@@ -260,7 +268,7 @@ client.send('myapp.welcome', { my: 'params' }, (error) => {
 });
 ```
 
-Note: If a callback is not provided and the connection is not available. This method will throw an error.
+Note: If a callback is not provided and the connection is not available this method will throw an error.
 
 ## Sending more than one notification at the same time
 
@@ -272,17 +280,20 @@ const messages = [
     client.buildMessage('myapp.notify', { friends: 'forevah' }),
     client.buildMessage('myapp.alert'),
 ];
+
 const payload = JSON.stringify(messages);
-client.connection.send(payload);
+client.connection.send(payload, (error) => {
+    if (!error) console.log('Notifications sent');
+});
 ```
 
 #### buildMessage (method: string, params?: any) => Object
 
-This creates a simple object for consumption by the client. It takes the same values as the `send` method, however does not stringify or send the message.
+This creates a simple object for consumption by the client. It takes nearly the same values as the `send` method, however does not stringify or send the message and does not take a callback.
 
 ## Errors
 
-When returning an error from the server the following fields are delivered across the network, `message` `name` `code` `data`. The data field can be any additional information you would like to include, but must be stringifiable into JSON.
+When returning an `Error` from the server, it should be a real `Error` instance, the following attributes will be transmitted across the network, `message` `name` `code` `data`. The data attribute contains any additional information you would like but it must be stringifiable into JSON.
 
 There are some errors the library may return itself.
 
