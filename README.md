@@ -276,10 +276,12 @@ passage.on('myapp.hi', (params) => {
 
 When you return an error from the server the following error fields are delivered across the network, `message` `name` `code` `data`. The data field can be any additional information you would like to include, but must be stringifiable into JSON.
 
-There are some errors the library itself returns. The errors you should occasionally expect are.
+There are some errors the library itself returns:
 
 | name | code | message |
 | - | - | - |
-| `BadRequest` | 400 | Bad request |
-| `ServiceUnavailable` | 503 | Service unavailable |
 | `Timeout` | 408 | Timeout |
+| `ServiceUnavailable` | 503 | Service unavailable |
+| `ParseError` | -32700 | Parse error |
+| `InvalidRequest` | -32600 | Invalid request |
+| `MethodNotFound` | -32601 | Method not found |

@@ -1,6 +1,5 @@
 const EventEmitter = require('events');
-const errServiceUnavailable = require('./err/service-unavailable');
-const errTimeout = require('./err/timeout');
+const err = require('./util/err');
 const jsonrpc = require('./version');
 
 function onOpen () {
@@ -69,7 +68,7 @@ function runTimeout (id) {
 
     if (id === undefined || this._callbacks[id] === undefined) return;
     
-    this._callbacks[id](errTimeout({ message: 'Server did not respond in time.' }));
+    this._callbacks[id](err.timeout({ info: 'Server did not respond in time.' }));
     delete this._callbacks[id];
 }
 
@@ -143,7 +142,7 @@ module.exports = (WebSocket) => {
 
         send (method, params, callback, timeout) {
             if (this.connection.readyState !== PassageClient.OPEN) {
-                const err = errServiceUnavailable({ message: 'Connection not available.' });
+                const err = err.serviceUnavailable({ info: 'Connection not available.' });
                 if (typeof params === 'function') callback = params;
                 if (typeof callback !== 'function') throw err;
                 callback(err);
