@@ -2,6 +2,18 @@ const EventEmitter = require('events');
 const WebSocket = require('ws');
 const ConnectedClient = require('./connected-client');
 
+const onConnection = methods => function (connection, req) {
+    const client = new ConnectedClient(methods, connection);
+
+    client.on('rpc.close', () => {
+        this.clients.delete(client);
+    });
+
+    this.clients.add(client);
+
+    this.emit('rpc.connection', client, req);
+};
+
 function onError (error) {
     this.emit('rpc.error', error);
 }
@@ -31,18 +43,9 @@ class PassageServer extends EventEmitter {
         delete options.methods;
 
         this.socket = new WebSocket.Server(options, callback);
-
+        this.socket.on('connection', onConnection(methods).bind(this));
         this.socket.on('error', onError.bind(this));
         this.socket.on('listening', onListening.bind(this));
-
-        this.socket.on('connection', (ws, req) => {
-            const client = new ConnectedClient(methods, ws);
-            client.on('rpc.close', () => {
-                this.clients.delete(client);
-            });
-            this.clients.add(client);
-            this.emit('rpc.connection', client, req);
-        });
 
         const heartrate = options.heartrate || 30000;
         this._interval = setInterval(heartbeat.bind(this), heartrate);

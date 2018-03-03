@@ -1,5 +1,6 @@
 const EventEmitter = require('events');
 const err = require('./util/err');
+const Parser = require('./util/parser');
 const jsonrpc = require('./version');
 
 function onOpen () {
@@ -25,39 +26,28 @@ function runCallback (id, error, result) {
 
     if (id === undefined || this._callbacks[id] === undefined) return;
 
-    if (error) {
-        const err = new Error(error.message);
-        err.name = error.name;
-        err.code = error.code;
-        err.data = error.data;
-        this._callbacks[id](err);
-    } else {
+    if (error)
+        this._callbacks[id](err.build(error));
+    else
         this._callbacks[id](undefined, result);
-    }
 
     delete this._callbacks[id];
-}
-
-function getMessages (data) {
-    try {
-        const messages = JSON.parse(data);
-        return (Array.isArray(messages) ? messages : [messages]);
-    } catch (e) {
-        return [];
-    }
 }
 
 function onMessage (data) {
     this.emit('rpc.message', data);
     
-    for (const message of getMessages(data)) {
-        if (typeof message !== 'object') continue;
-        if (message.jsonrpc !== jsonrpc) continue;
+    const parser = new Parser(data);
+    if (parser.error()) return;
 
-        if (message.method !== undefined) {
-            this.emit(message.method, message.params);
-        } else if (message.id !== undefined) {
-            runCallback.call(this, message.id, message.error, message.result);
+    for (const request of parser.requests) {
+        if (typeof request !== 'object') continue;
+        if (request.jsonrpc !== jsonrpc) continue;
+
+        if (typeof request.method === 'string') {
+            this.emit(request.method, request.params);
+        } else if (request.id !== undefined) {
+            runCallback.call(this, request.id, request.error, request.result);
         }
     }
 }
