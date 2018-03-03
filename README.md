@@ -54,8 +54,8 @@ passage.on('myapp.newuser', (params) => {
     console.log(params);
 });
 
-passage.send('myapp.hello', (error, result) => {
-    console.log(result);
+passage.send('myapp.hello', (err, response) => {
+    console.log(response);
 });
 ```
 
@@ -79,7 +79,7 @@ Maximum number of reconnection attempts.
 
 ## Events
 
-When the server sends a notification to your application, it triggers an event. You may choose to set a listener using `.on(method, callback)`. There are a few included events the client library provides.
+When the server sends a notification to your application, it triggers an event. This library uses node's [EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter) therefore you may choose to set a listener using `.on(method, callback)` as in the example above. There are a few included events the client library provides.
 
 | method | description | params |
 | - | - | - |
@@ -165,7 +165,7 @@ The methods parameter is a dictionary of procedures your server listens to from 
 
 Whether the server responds is dependent on the client. If the client is not waiting for a response the server will not send one. Every method is expected to be in the following format.
 
-`(params: any, ws: WebSocket) => any`
+`(params: any, client: ConnectedClient) => any`
 
 You must return a `Promise` if you are doing something which is asyncronous.
 
@@ -192,7 +192,7 @@ Like the client, the server provides several events.
 
 ## ConnectedClient
 
-The `rpc.connection` event delivers a connected client instance, and a `req` object. The connected client also has events.
+Methods are run including a connected client instance. The `rpc.connection` event offers a connected client instance, and a `req` object. The connected client has events.
 
 | method | description | params |
 | - | - | - |
@@ -206,7 +206,7 @@ Send a notification to the connected client.
 
 #### close (callback?: Function) => void
 
-Closes the client connection and runs the callback.
+Closes the client connection then runs the callback.
 
 ## Sending more than one notification at a time
 
@@ -224,7 +224,7 @@ client.connection.send(payload);
 
 #### buildMessage (method: string, params?: any) => Object
 
-This creates a simple object for consumption by the client. It takes the same values as the `send` method, however does not stringify or send the message. You then use this in conjunction with the raw `send` method for delivery.
+This creates a simple object for consumption by the client. It takes the same values as the `send` method, however does not stringify or send the message.
 
 ## Example
 
@@ -274,7 +274,7 @@ passage.on('myapp.hi', (params) => {
 
 ## Errors
 
-When you want to deliver an error the following error fields are delivered across the network, `message` `name` `code` `data`. The data field can be any additional information you would like to include, but must be stringifiable into JSON.
+When you return an error from the server the following error fields are delivered across the network, `message` `name` `code` `data`. The data field can be any additional information you would like to include, but must be stringifiable into JSON.
 
 There are some errors the library itself returns. The errors you should occasionally expect are.
 
