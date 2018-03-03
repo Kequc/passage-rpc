@@ -36,6 +36,7 @@ const buildResponse = ids => results => {
         if (result instanceof Error) {
             const error = {
                 message: result.message,
+                name: result.name,
                 code: result.code,
                 data: result.data
             };

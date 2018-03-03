@@ -28,6 +28,7 @@ function runCallback (id, error, result) {
 
     if (error) {
         const err = new Error(error.message);
+        err.name = error.name;
         err.code = error.code;
         err.data = error.data;
         this._callbacks[id](err);
@@ -66,9 +67,9 @@ function runTimeout (id) {
     clearTimeout(this._timeouts[id]);
     delete this._timeouts[id];
 
-    if (this._callbacks[id] === undefined) return;
+    if (id === undefined || this._callbacks[id] === undefined) return;
     
-    this._callbacks[id](errTimeout());
+    this._callbacks[id](errTimeout({ message: 'Server did not respond in time.' }));
     delete this._callbacks[id];
 }
 
@@ -142,8 +143,10 @@ module.exports = (WebSocket) => {
 
         send (method, params, callback, timeout) {
             if (this.connection.readyState !== PassageClient.OPEN) {
-                if (typeof callback !== 'function') throw errServiceUnavailable();
-                callback(errServiceUnavailable());
+                const err = errServiceUnavailable({ message: 'Connection not available.' });
+                if (typeof params === 'function') callback = params;
+                if (typeof callback !== 'function') throw err;
+                callback(err);
                 return;
             }
             const payload = JSON.stringify(this.buildMessage(method, params, callback, timeout));

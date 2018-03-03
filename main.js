@@ -1,6 +1,5 @@
-const EventEmitter = require('events');
 const WebSocket = require('ws');
-const PassageClient = require('./src/client')(EventEmitter, WebSocket);
+const PassageClient = require('./src/client')(WebSocket);
 const PassageServer = require('./src/server');
 
 PassageClient.Server = PassageServer;

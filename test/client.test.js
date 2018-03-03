@@ -247,9 +247,8 @@ describe('client', () => {
             client.on('rpc.open', () => {
                 client.send(method, (error, result) => {
                     expect(error).to.be.an(Error);
-                    expect(error.message).to.equal('Timeout');
+                    expect(error.name).to.equal('Timeout');
                     expect(error.code).to.equal(408);
-                    expect(error.data).to.be(undefined);
                     expect(result).to.be(undefined);
                     done();
                 }, 0); // timeout set to 0 for faster test

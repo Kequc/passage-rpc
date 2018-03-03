@@ -153,8 +153,9 @@ describe('server', () => {
             });
         });
         it('should send an error', done => {
-            const expected = { code: 500, message: 'an error!', data: { hmm: 'oops' } };
+            const expected = { code: 500, name: 'InternalServiceError', message: 'an error!', data: { hmm: 'oops' } };
             const error = new Error(expected.message);
+            error.name = expected.name;
             error.code = expected.code;
             error.data = expected.data;
             const methods = { [method]: () => error };
@@ -187,8 +188,9 @@ describe('server', () => {
             });
         });
         it('should send an error', done => {
-            const expected = { code: 500, message: 'an error!', data: { hmm: 'oops' } };
+            const expected = { code: 500, name: 'InternalServiceError', message: 'an error!', data: { hmm: 'oops' } };
             const error = new Error(expected.message);
+            error.name = expected.name;
             error.code = expected.code;
             error.data = expected.data;
             const methods = { [method]: () => Promise.reject(error) };

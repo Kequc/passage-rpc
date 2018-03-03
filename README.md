@@ -271,3 +271,15 @@ passage.on('myapp.hi', (params) => {
     passage.send('myapp.cats.list', processResponse);
 });
 ```
+
+## Errors
+
+When you want to deliver an error the following error fields are delivered across the network, `message` `name` `code` `data`. The data field can be any additional information you would like to include, but must be stringifiable into JSON.
+
+There are some errors the library itself returns. The errors you should occasionally expect are.
+
+| name | code | message |
+| - | - | - |
+| `BadRequest` | 400 | Bad request |
+| `ServiceUnavailable` | 503 | Service unavailable |
+| `Timeout` | 408 | Timeout |
