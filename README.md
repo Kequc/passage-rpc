@@ -39,12 +39,14 @@ Download and include the library onto your page, a minified version can be found
 Create a new instance of `Passage` providing a uri and set of options.
 
 ```javascript
-const passage = new Passage('wss://example.com', {
+const options = {
     requestTimeout: 6000,
     reconnect: false,
     reconnectTimeout: 2000,
     reconnectTries: 60
-});
+};
+
+const passage = new Passage('wss://example.com', options);
 
 passage.on('rpc.open', () => {
     console.log('connected!');
@@ -83,7 +85,7 @@ When the server sends a notification to your application, it triggers an event. 
 ```javascript
 passage.on('myapp.welcome', (params) => {
     console.log(params);
-})
+});
 ```
 
 ## Instance

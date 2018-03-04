@@ -99,6 +99,14 @@ module.exports = (WebSocket) => {
         connect () {
             this.close();
             this.connection = new WebSocket(this.uri);
+
+            if (typeof this.connection.on !== 'function') {
+                // browser
+                this.connection.on = function (name, callback) {
+                    this.addEventListener(name, event => { callback(event.data); });
+                };
+            }
+
             this.connection.on('open', onOpen.bind(this));
             this.connection.on('close', onClose.bind(this));
             this.connection.on('error', onError.bind(this));
