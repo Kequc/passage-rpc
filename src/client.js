@@ -9,11 +9,12 @@ function onOpen () {
 }
 
 function onClose () {
-    if (this.options.reconnect && !this.connection.killed && this._tries <= this.options.reconnectTries) {
+    const reconnecting = (this.options.reconnect && !this.connection.killed && this._tries <= this.options.reconnectTries);
+    if (reconnecting) {
         this._tries++;
         setTimeout(() => { this.connect(); }, this.options.reconnectTimeout);
     }
-    this.emit('rpc.close');
+    this.emit('rpc.close', reconnecting);
 }
 
 function onError (error) {
@@ -89,11 +90,11 @@ module.exports = (WebSocket) => {
             return this.connection.readyState;
         }
 
-        close () {
+        close (code, reason) {
             if (this.connection === undefined) return;
 
             this.connection.killed = true;
-            this.connection.close();
+            this.connection.close(code, reason);
         }
 
         connect () {

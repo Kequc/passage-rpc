@@ -79,7 +79,7 @@ When the server sends a notification to your application, it triggers an event. 
 | - | - | - |
 | `rpc.message` | Message was received. | data |
 | `rpc.open` | Connection established. | |
-| `rpc.close` | Connection closed. | |
+| `rpc.close` | Connection closed. | reconnecting |
 | `rpc.error` | Error has occurred. | Error |
 
 ```javascript
@@ -88,11 +88,13 @@ passage.on('myapp.welcome', (params) => {
 });
 ```
 
+On `rpc.close` a parameter is passed representing whether the module intends to reconnect. This will only be true if the `reconnect` option has been set to true, and the maximum number of `reconnectTries` has not been met.
+
 ## Instance
 
-#### close () => void
+#### close (code?: number, reason?: string) => void
 
-Closes the connection.
+Closes the connection using the optional code and reason given.
 
 #### connect () => void
 
@@ -244,9 +246,9 @@ The `rpc.connection` event offers a connected client instance, and a `req` objec
 | `rpc.close` | Connection closed. | |
 | `rpc.error` | Error has occurred. | Error |
 
-#### close (callback?: () => void) => void
+#### close (code?: number, reason?: string) => void
 
-Closes the connection then runs the callback.
+Closes the connection using the optional code and reason given.
 
 #### readyState
 

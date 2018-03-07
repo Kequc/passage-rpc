@@ -65,21 +65,54 @@ describe('client', () => {
                 expect(client.options).to.eql(DEFAULT_OPTIONS);
             }
         });
+        it('should close without reconnecting', done => {
+            const client = new PassageClient(URI, { reconnect: true });
+            client.on('rpc.close', (reconnecting) => {
+                expect(reconnecting).to.be(false);
+                done();
+            });
+            client.on('rpc.open', () => {
+                client.close();
+            });
+        });
         it('should reconnect', done => {
             const client = new PassageClient(URI, { reconnect: true, reconnectTimeout: 0 });
             let count = 0;
+            function onClose (reconnecting) {
+                expect(reconnecting).to.be(true);
+                if (count === 2) server = new WebSocket.Server({ port: PORT });
+                count++;
+            }
             client.on('rpc.open', () => {
                 if (count === 0) {
                     server.close();
                 } else {
                     done();
+                    client.removeListener('rpc.close', onClose);
                     client.close();
                 }
             });
-            client.on('rpc.close', () => {
-                if (count === 2) server = new WebSocket.Server({ port: PORT });
+            client.on('rpc.close', onClose);
+        });
+        it('should reconnect until reconnectTries', done => {
+            const reconnectTries = 3;
+            const client = new PassageClient(URI, { reconnect: true, reconnectTimeout: 0, reconnectTries });
+            let count = 0;
+            function onClose (reconnecting) {
+                if (count > reconnectTries) {
+                    expect(reconnecting).to.be(false);
+                    done();
+                    client.removeListener('rpc.close', onClose);
+                    client.close();
+                } else {
+                    expect(reconnecting).to.be(true);
+                }
                 count++;
+            }
+            client.on('rpc.open', () => {
+                if (count === 0) server.close();
             });
+            client.on('rpc.close', onClose);
         });
     });
 
