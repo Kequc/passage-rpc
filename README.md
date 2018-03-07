@@ -102,7 +102,7 @@ This will close the connection, then reconnect.
 
 #### readyState
 
-The ready state of the connection, useful to compare against named ready states available on the contructor.
+The ready state of the connection, useful to compare against named ready states available on the constructor.
 
 | name | value | location |
 | - | - | - |
