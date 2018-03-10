@@ -13,6 +13,8 @@ function onClose () {
     if (reconnecting) {
         this._tries++;
         setTimeout(() => { this.connect(); }, this.options.reconnectTimeout);
+    } else if (this._tries > this.options.reconnectTries) {
+        this._tries = 0;
     }
     this.emit('rpc.close', reconnecting);
 }
