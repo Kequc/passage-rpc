@@ -40,10 +40,7 @@ Create a new instance of `Passage` providing a uri and set of options.
 
 ```javascript
 const options = {
-    requestTimeout: 6000,
-    reconnect: false,
-    reconnectTimeout: 2000,
-    reconnectTries: 60
+    reconnect: true,
 };
 
 const passage = new Passage('wss://example.com', options);
@@ -71,6 +68,14 @@ The amount of time to wait between reconnection attempts.
 
 Maximum number of reconnection attempts.
 
+#### persistent <default: false>
+
+Whether the library should keep trying to reconnect forever. The library will first use the reconnect feature, and if it runs out of tries will use this feature.
+
+#### persistentTimeout <default: 10 * 60 * 1000>
+
+The amount of time to wait between each persistent reconnection attempt.
+
 ## Events
 
 When the server sends a notification to your application, it triggers an event. This library uses node's [EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter) therefore events can be listened for in a common way.
@@ -88,7 +93,7 @@ passage.on('myapp.welcome', (params) => {
 });
 ```
 
-On `rpc.close` a parameter is passed representing whether the module intends to reconnect. This will only be true if the `reconnect` option has been set to true, and the maximum number of `reconnectTries` has not been met.
+On `rpc.close` a parameter is passed representing whether the module intends to reconnect. This will only be true if the `reconnect` option has been set to true, and the maximum number of `reconnectTries` has not been met. The `persistent` option will not affect this.
 
 ## Instance
 
@@ -173,18 +178,15 @@ The server implementation is built on the [npm ws](https://github.com/websockets
 ```javascript
 const Passage = require('passage-rpc');
 
-const port = 8000;
-const heartrate = 30000;
-const methods = {
-    'myapp.hello': () => 'hi';
+const options = {
+    port: 8000,
+    heartrate: 30000,
+    methods: {
+        'myapp.hello': () => 'hi';
+    }
 };
 
-const server = new Passage.Server({ port, heartrate, methods });
-
-server.on('rpc.connection', (client) => {
-    console.log('connected!');
-    client.send('myapp.welcome', { hi: 'there' });
-});
+const server = new Passage.Server(options);
 
 server.on('rpc.listening', () => {
     console.log('Listening on port: ' + port);
@@ -211,7 +213,7 @@ For example:
 const methods = {
     'myapp.findUser': async (userId) => {
         const user = await findUser(userId);
-        return user;
+        return { user };
     }
 };
 ```
@@ -256,7 +258,7 @@ The ready state of the connection.
 
 #### send (method: string, [params: any], callback?: (error: Error) => void) => void
 
-Send a notification to the connected client.
+Send a notification to the connected client. The server cannot expect a response from the client with the current implementation. The callback is only to let you know that the message was sent successfully.
 
 ```javascript
 client.send('myapp.welcome');
@@ -276,7 +278,7 @@ Note: If a callback is not provided and the connection is not available this met
 
 ## Sending more than one notification at the same time
 
-This again must be done manually, a full example from the server can be seen below.
+A full example from the server can be seen below.
 
 ```javascript
 const messages = [
@@ -293,13 +295,13 @@ client.connection.send(payload, (error) => {
 
 #### buildMessage (method: string, params?: any) => Object
 
-This creates a simple object for consumption by the client. It takes nearly the same values as the `send` method, however does not stringify or send the message and does not take a callback.
+This creates a simple object for consumption by the client. It takes nearly the same values as the `send` method, however does not stringify or send the message and does not accept a callback.
 
 ## Errors
 
-When returning an `Error` from the server, it should be a real `Error` instance, the following attributes will be transmitted across the network, `message` `name` `code` `data`. The data attribute contains any additional information you would like but it must be stringifiable into JSON.
+When being returned from the server, it should be a `Error` instance. The following attributes are transmitted across the network, `message` `name` `code` and `data`. The `data` attribute contains any additional information you would like to include but must be stringifiable into JSON.
 
-There are some errors the library may return itself.
+There are some errors the library may return itself in callbacks.
 
 | name | code | message |
 | - | - | - |

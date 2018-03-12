@@ -13,8 +13,8 @@ function onClose () {
     if (reconnecting) {
         this._tries++;
         setTimeout(() => { this.connect(); }, this.options.reconnectTimeout);
-    } else if (this._tries > this.options.reconnectTries) {
-        this._tries = 0;
+    } else if (this.options.persistent && !this.connection.killed) {
+        setTimeout(() => { this.connect(); }, this.options.persistentTimeout);
     }
     this.emit('rpc.close', reconnecting);
 }
@@ -77,7 +77,9 @@ module.exports = (WebSocket) => {
                 requestTimeout: numOrDef(options.requestTimeout, 6000),
                 reconnect: !!options.reconnect,
                 reconnectTimeout: numOrDef(options.reconnectTimeout, 2000),
-                reconnectTries: numOrDef(options.reconnectTries, 60)
+                reconnectTries: numOrDef(options.reconnectTries, 60),
+                persistent: !!options.persistent,
+                persistentTimeout: numOrDef(options.persistentTimeout, 10 * 60 * 1000)
             };
 
             this._nextId = 1;

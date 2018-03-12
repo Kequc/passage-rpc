@@ -9,7 +9,9 @@ const DEFAULT_OPTIONS = {
     requestTimeout: 6000,
     reconnect: false,
     reconnectTimeout: 2000,
-    reconnectTries: 60
+    reconnectTries: 60,
+    persistent: false,
+    persistentTimeout: 10 * 60 * 1000
 };
 
 describe('client', () => {
@@ -44,7 +46,9 @@ describe('client', () => {
                 requestTimeout: 600,
                 reconnect: true,
                 reconnectTimeout: 200,
-                reconnectTries: 6
+                reconnectTries: 6,
+                persistent: false,
+                persistentTimeout: 10 * 60 * 1000
             };
             const client = new PassageClient(URI, options);
             expect(client.uri).to.equal(URI);
@@ -58,7 +62,9 @@ describe('client', () => {
                     requestTimeout: value,
                     reconnect: false,
                     reconnectTimeout: value,
-                    reconnectTries: value
+                    reconnectTries: value,
+                    persistent: false,
+                    persistentTimeout: value
                 };
                 const client = new PassageClient(URI, options);
                 expect(client.uri).to.equal(URI);
@@ -111,6 +117,25 @@ describe('client', () => {
             }
             client.on('rpc.open', () => {
                 if (count === 0) server.close();
+            });
+            client.on('rpc.close', onClose);
+        });
+        it('should be persistent', done => {
+            const client = new PassageClient(URI, { persistent: true, persistentTimeout: 0 });
+            let count = 0;
+            function onClose (reconnecting) {
+                expect(reconnecting).to.be(false);
+                if (count === 2) server = new WebSocket.Server({ port: PORT });
+                count++;
+            }
+            client.on('rpc.open', () => {
+                if (count === 0) {
+                    server.close();
+                } else {
+                    done();
+                    client.removeListener('rpc.close', onClose);
+                    client.close();
+                }
             });
             client.on('rpc.close', onClose);
         });
