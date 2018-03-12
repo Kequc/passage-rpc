@@ -218,6 +218,20 @@ const methods = {
 };
 ```
 
+## Errors
+
+When being returned from the server, it should be a `Error` instance. If your method is a `Promise` it is acceptable to reject. The following attributes are transmitted across the network, `message` `name` `code` and `data`. The `data` attribute contains any additional information you would like to include but must be stringifiable into JSON.
+
+There are some errors the library may return itself in callbacks.
+
+| name | code | message |
+| - | - | - |
+| `Timeout` | 408 | Timeout |
+| `ServiceUnavailable` | 503 | Service unavailable |
+| `ParseError` | -32700 | Parse error |
+| `InvalidRequest` | -32600 | Invalid request |
+| `MethodNotFound` | -32601 | Method not found |
+
 ## Server events
 
 Events on the server are handled differently than on the client in most cases, but there are important ones.
@@ -296,20 +310,6 @@ client.connection.send(payload, (error) => {
 #### buildMessage (method: string, params?: any) => Object
 
 This creates a simple object for consumption by the client. It takes nearly the same values as the `send` method, however does not stringify or send the message and does not accept a callback.
-
-## Errors
-
-When being returned from the server, it should be a `Error` instance. The following attributes are transmitted across the network, `message` `name` `code` and `data`. The `data` attribute contains any additional information you would like to include but must be stringifiable into JSON.
-
-There are some errors the library may return itself in callbacks.
-
-| name | code | message |
-| - | - | - |
-| `Timeout` | 408 | Timeout |
-| `ServiceUnavailable` | 503 | Service unavailable |
-| `ParseError` | -32700 | Parse error |
-| `InvalidRequest` | -32600 | Invalid request |
-| `MethodNotFound` | -32601 | Method not found |
 
 ## Example
 
