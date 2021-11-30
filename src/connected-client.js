@@ -8,7 +8,8 @@ const onMessage = methods => function (data) {
 
     buildResponse(data, methods, this)
         .then(response => {
-            if (response) this.connection.send(JSON.stringify(response));
+            if (response && this.readyState === 1)
+                this.connection.send(JSON.stringify(response));
         })
         .catch(e => { throw e; });
 };

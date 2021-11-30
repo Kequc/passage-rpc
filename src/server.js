@@ -26,7 +26,7 @@ function heartbeat () {
     for (const client of this.clients) {
         if (client.isAlive) {
             client.isAlive = false;
-            client.connection.ping('', false, true);
+            client.connection.ping();
         } else {
             client.connection.terminate();
         }
